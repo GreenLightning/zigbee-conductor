@@ -1,0 +1,39 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+	"build_systems":
+	[
+		{
+			"name": "Build",
+			"working_dir": "$project_path",
+			"shell_cmd": "go build || exit 0",
+			"file_regex": "^(.+?):(\\d+?):(\\d+)?: (.+)$",
+			"windows": {
+				"shell_cmd": "go build || exit /b 0"
+			}
+		},
+		{
+			"name": "Format",
+			"shell_cmd": "go fmt ./...",
+			"working_dir": "$project_path"
+		},
+		{
+			"name": "Count Lines of Code",
+			"working_dir": "$project_path",
+			"shell_cmd": "cloc -by-file ."
+		},
+		{
+			"name": "Package and Upload",
+			"working_dir": "$project_path",
+			"shell_cmd": "env GOOS=linux GOARCH=arm go build && rsync -rtv zigbee-conductor pi@2touch.local:zigbee/ || exit 0",
+			"file_regex": "^(.+?):(\\d+?):(\\d+)?: (.+)$",
+			"windows": {
+				"shell_cmd": "cmd /C \"set GOOS=linux&set GOARCH=arm&go build\" && bash -c \"rsync -rtv zigbee-conductor pi@2touch.local:zigbee/\" || exit /b 0"
+			}
+		}
+	]
+}
