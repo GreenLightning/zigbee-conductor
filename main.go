@@ -12,6 +12,79 @@ import (
 
 const SOF = 0xFE // start of frame
 
+type FrameType byte
+
+const (
+	FRAME_TYPE_POLL FrameType = 0
+	FRAME_TYPE_SREQ FrameType = 1 // synchronous request
+	FRAME_TYPE_AREQ FrameType = 2 // asynchronous reqest
+	FRAME_TYPE_SRSP FrameType = 3 // synchronous response
+)
+
+func (t FrameType) String() string {
+	switch t {
+	case FRAME_TYPE_POLL:
+		return "POLL"
+	case FRAME_TYPE_SREQ:
+		return "SREQ"
+	case FRAME_TYPE_AREQ:
+		return "AREQ"
+	case FRAME_TYPE_SRSP:
+		return "SRSP"
+	default:
+		return fmt.Sprintf("Reserved(%d)", byte(t))
+	}
+}
+
+type FrameSubsystem byte
+
+const (
+	FRAME_SUBSYSTEM_RPC_ERROR FrameSubsystem = 0
+	FRAME_SUBSYSTEM_SYS       FrameSubsystem = 1
+	FRAME_SUBSYSTEM_MAC       FrameSubsystem = 2
+	FRAME_SUBSYSTEM_NWK       FrameSubsystem = 3
+	FRAME_SUBSYSTEM_AF        FrameSubsystem = 4 // application framework
+	FRAME_SUBSYSTEM_ZDO       FrameSubsystem = 5 // zigbee device object
+	FRAME_SUBSYSTEM_SAPI      FrameSubsystem = 6 // simple api
+	FRAME_SUBSYSTEM_UTIL      FrameSubsystem = 7
+	FRAME_SUBSYSTEM_DEBUG     FrameSubsystem = 8
+	FRAME_SUBSYSTEM_APP       FrameSubsystem = 9
+)
+
+func (s FrameSubsystem) String() string {
+	switch s {
+	case FRAME_SUBSYSTEM_RPC_ERROR:
+		return "RPC_ERROR"
+	case FRAME_SUBSYSTEM_SYS:
+		return "SYS"
+	case FRAME_SUBSYSTEM_MAC:
+		return "MAC"
+	case FRAME_SUBSYSTEM_NWK:
+		return "NWK"
+	case FRAME_SUBSYSTEM_AF:
+		return "AF"
+	case FRAME_SUBSYSTEM_ZDO:
+		return "ZDO"
+	case FRAME_SUBSYSTEM_SAPI:
+		return "SAPI"
+	case FRAME_SUBSYSTEM_UTIL:
+		return "UTIL"
+	case FRAME_SUBSYSTEM_DEBUG:
+		return "DEBUG"
+	case FRAME_SUBSYSTEM_APP:
+		return "APP"
+	default:
+		return fmt.Sprintf("Reserved(%d)", byte(s))
+	}
+}
+
+type Frame struct {
+	Type      FrameType
+	Subsystem FrameSubsystem
+	ID        byte
+	Data      []byte
+}
+
 func main() {
 	options := serial.OpenOptions{
 		PortName:          "/dev/ttyACM0",
@@ -46,10 +119,22 @@ func main() {
 	_, err = port.Write([]byte{0xEF})
 	check(err)
 
-	_, err = port.Write([]byte{SOF, 0, 33, 2, 35})
-	check(err)
+	check(writeFrame(port, Frame{FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_SYS, 2, nil}))
 
 	time.Sleep(20 * time.Second)
+}
+
+func writeFrame(port io.Writer, frame Frame) error {
+	frameLength := 1 + 1 + 2 + len(frame.Data) + 1 // SOF (start of frame) + length + command + data + FCS (frame check sequence)
+	var buffer [256]byte
+	buffer[0] = SOF
+	buffer[1] = byte(len(frame.Data))
+	buffer[2] = (byte(frame.Type) << 5) | byte(frame.Subsystem) // cmd0
+	buffer[3] = frame.ID                                        // cmd1
+	copy(buffer[4:], frame.Data)
+	buffer[frameLength-1] = calculateFCS(buffer[1 : frameLength-1]) // exclude SOF and FCS
+	_, err := port.Write(buffer[:frameLength])
+	return err
 }
 
 // @Todo: Ignore errors.Is(err, os.ErrClosed).
@@ -85,8 +170,16 @@ func readPort(port io.Reader) {
 			continue
 		}
 
-		// cmd0, cmd1 := buffer[1], buffer[2]
-		fmt.Println("frame: ", buffer)
+		cmd0, cmd1 := buffer[1], buffer[2]
+
+		frame := Frame{
+			Type:      FrameType(cmd0 >> 5),
+			Subsystem: FrameSubsystem(cmd0 & 0b00011111),
+			ID:        cmd1,
+			Data:      buffer[3:],
+		}
+
+		fmt.Println("frame: ", frame)
 	}
 }
 
