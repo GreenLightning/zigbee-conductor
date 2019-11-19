@@ -57,19 +57,16 @@ func readPort(port io.Reader) {
 	r := bufio.NewReaderSize(port, 256)
 	for {
 		// Find SOF (start of frame).
-		{
+		b, err := r.ReadByte()
+		check(err)
+		if b != SOF {
 			skipped := 0
-			for {
-				b, err := r.ReadByte()
+			for b != SOF {
+				b, err = r.ReadByte()
 				check(err)
-				if b == SOF {
-					break
-				}
 				skipped++
 			}
-			if skipped != 0 {
-				log.Printf("skipped %d bytes before frame", skipped)
-			}
+			log.Printf("skipped %d bytes before frame", skipped)
 		}
 
 		length, err := r.ReadByte()
