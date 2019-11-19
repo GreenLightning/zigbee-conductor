@@ -1,10 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"log"
+	"time"
 
 	"github.com/jacobsa/go-serial/serial"
 )
+
+const SOF = 0xFE // start of frame
 
 func main() {
 	options := serial.OpenOptions{
@@ -20,6 +26,8 @@ func main() {
 	check(err)
 
 	defer port.Close()
+
+	go readPort(port)
 
 	// Send magic byte to bootloader, to skip 60s wait after startup.
 	//
@@ -38,15 +46,59 @@ func main() {
 	_, err = port.Write([]byte{0xEF})
 	check(err)
 
-	_, err = port.Write([]byte{254, 0, 33, 2, 35})
+	_, err = port.Write([]byte{SOF, 0, 33, 2, 35})
 	check(err)
 
-	buffer := make([]byte, 256)
+	time.Sleep(20 * time.Second)
+}
+
+// @Todo: Ignore errors.Is(err, os.ErrClosed).
+func readPort(port io.Reader) {
+	r := bufio.NewReaderSize(port, 256)
 	for {
-		n, err := port.Read(buffer)
+		// Find SOF (start of frame).
+		{
+			skipped := 0
+			for {
+				b, err := r.ReadByte()
+				check(err)
+				if b == SOF {
+					break
+				}
+				skipped++
+			}
+			if skipped != 0 {
+				log.Printf("skipped %d bytes before frame", skipped)
+			}
+		}
+
+		length, err := r.ReadByte()
 		check(err)
-		fmt.Println(buffer[:n])
+
+		buffer := make([]byte, 1+2+length) // length + command + data
+		buffer[0] = length
+		_, err = io.ReadFull(r, buffer[1:])
+		check(err)
+
+		fcs, err := r.ReadByte()
+		check(err)
+
+		if fcs != calculateFCS(buffer) {
+			log.Println("skipping invalid frame")
+			continue
+		}
+
+		// cmd0, cmd1 := buffer[1], buffer[2]
+		fmt.Println("frame: ", buffer)
 	}
+}
+
+// calculateFCS returns the frame check sequence for a general format frame.
+func calculateFCS(buffer []byte) (fcs byte) {
+	for _, value := range buffer {
+		fcs ^= value
+	}
+	return
 }
 
 func check(err error) {
