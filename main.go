@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"time"
+	"flag"
 
 	"github.com/jacobsa/go-serial/serial"
 )
@@ -86,8 +87,12 @@ type Frame struct {
 }
 
 func main() {
+	portFlag := flag.String("port", "/dev/ttyACM0", "name of the serial port to use")
+
+	flag.Parse()
+
 	options := serial.OpenOptions{
-		PortName:          "/dev/ttyACM0",
+		PortName:          *portFlag,
 		BaudRate:          115200,
 		RTSCTSFlowControl: true,
 		DataBits:          8,
