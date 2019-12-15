@@ -2,89 +2,16 @@ package main
 
 import (
 	"bufio"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
-	"flag"
 
 	"github.com/jacobsa/go-serial/serial"
 )
-
-const SOF = 0xFE // start of frame
-
-type FrameType byte
-
-const (
-	FRAME_TYPE_POLL FrameType = 0
-	FRAME_TYPE_SREQ FrameType = 1 // synchronous request
-	FRAME_TYPE_AREQ FrameType = 2 // asynchronous reqest
-	FRAME_TYPE_SRSP FrameType = 3 // synchronous response
-)
-
-func (t FrameType) String() string {
-	switch t {
-	case FRAME_TYPE_POLL:
-		return "POLL"
-	case FRAME_TYPE_SREQ:
-		return "SREQ"
-	case FRAME_TYPE_AREQ:
-		return "AREQ"
-	case FRAME_TYPE_SRSP:
-		return "SRSP"
-	default:
-		return fmt.Sprintf("Reserved(%d)", byte(t))
-	}
-}
-
-type FrameSubsystem byte
-
-const (
-	FRAME_SUBSYSTEM_RPC_ERROR FrameSubsystem = 0
-	FRAME_SUBSYSTEM_SYS       FrameSubsystem = 1
-	FRAME_SUBSYSTEM_MAC       FrameSubsystem = 2
-	FRAME_SUBSYSTEM_NWK       FrameSubsystem = 3
-	FRAME_SUBSYSTEM_AF        FrameSubsystem = 4 // application framework
-	FRAME_SUBSYSTEM_ZDO       FrameSubsystem = 5 // zigbee device object
-	FRAME_SUBSYSTEM_SAPI      FrameSubsystem = 6 // simple api
-	FRAME_SUBSYSTEM_UTIL      FrameSubsystem = 7
-	FRAME_SUBSYSTEM_DEBUG     FrameSubsystem = 8
-	FRAME_SUBSYSTEM_APP       FrameSubsystem = 9
-)
-
-func (s FrameSubsystem) String() string {
-	switch s {
-	case FRAME_SUBSYSTEM_RPC_ERROR:
-		return "RPC_ERROR"
-	case FRAME_SUBSYSTEM_SYS:
-		return "SYS"
-	case FRAME_SUBSYSTEM_MAC:
-		return "MAC"
-	case FRAME_SUBSYSTEM_NWK:
-		return "NWK"
-	case FRAME_SUBSYSTEM_AF:
-		return "AF"
-	case FRAME_SUBSYSTEM_ZDO:
-		return "ZDO"
-	case FRAME_SUBSYSTEM_SAPI:
-		return "SAPI"
-	case FRAME_SUBSYSTEM_UTIL:
-		return "UTIL"
-	case FRAME_SUBSYSTEM_DEBUG:
-		return "DEBUG"
-	case FRAME_SUBSYSTEM_APP:
-		return "APP"
-	default:
-		return fmt.Sprintf("Reserved(%d)", byte(s))
-	}
-}
-
-type Frame struct {
-	Type      FrameType
-	Subsystem FrameSubsystem
-	ID        byte
-	Data      []byte
-}
 
 func main() {
 	portFlag := flag.String("port", "/dev/ttyACM0", "name of the serial port to use")
@@ -124,76 +51,37 @@ func main() {
 	_, err = port.Write([]byte{0xEF})
 	check(err)
 
-	check(writeFrame(port, Frame{FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_SYS, 2, nil}))
+	check(writeCommand(port, SysVersionRequest{}))
 
 	time.Sleep(20 * time.Second)
 }
 
-func writeFrame(port io.Writer, frame Frame) error {
-	frameLength := 1 + 1 + 2 + len(frame.Data) + 1 // SOF (start of frame) + length + command + data + FCS (frame check sequence)
-	var buffer [256]byte
-	buffer[0] = SOF
-	buffer[1] = byte(len(frame.Data))
-	buffer[2] = (byte(frame.Type) << 5) | byte(frame.Subsystem) // cmd0
-	buffer[3] = frame.ID                                        // cmd1
-	copy(buffer[4:], frame.Data)
-	buffer[frameLength-1] = calculateFCS(buffer[1 : frameLength-1]) // exclude SOF and FCS
-	_, err := port.Write(buffer[:frameLength])
-	return err
-}
-
-// @Todo: Ignore errors.Is(err, os.ErrClosed).
 func readPort(port io.Reader) {
 	r := bufio.NewReaderSize(port, 256)
 	for {
-		// Find SOF (start of frame).
-		b, err := r.ReadByte()
-		check(err)
-		if b != SOF {
-			skipped := 0
-			for b != SOF {
-				b, err = r.ReadByte()
-				check(err)
-				skipped++
-			}
-			log.Printf("skipped %d bytes before frame", skipped)
-		}
-
-		length, err := r.ReadByte()
-		check(err)
-
-		buffer := make([]byte, 1+2+length) // length + command + data
-		buffer[0] = length
-		_, err = io.ReadFull(r, buffer[1:])
-		check(err)
-
-		fcs, err := r.ReadByte()
-		check(err)
-
-		if fcs != calculateFCS(buffer) {
-			log.Println("skipping invalid frame")
+		frame, err := readFrame(r)
+		if errors.Is(err, ErrInvalidFrame) || errors.Is(err, ErrGarbage) {
+			log.Println(err)
 			continue
 		}
-
-		cmd0, cmd1 := buffer[1], buffer[2]
-
-		frame := Frame{
-			Type:      FrameType(cmd0 >> 5),
-			Subsystem: FrameSubsystem(cmd0 & 0b00011111),
-			ID:        cmd1,
-			Data:      buffer[3:],
+		if errors.Is(err, os.ErrClosed) {
+			break
 		}
+		check(err)
 
-		fmt.Println("frame: ", frame)
-	}
-}
+		command, err := parseCommandFromFrame(frame)
+		if err == ErrCommandInvalidFrame {
+			log.Println("invalid frame")
+			continue
+		}
+		if err == ErrCommandUnknownFrameHeader {
+			log.Println("unknown frame:", frame)
+			continue
+		}
+		check(err)
 
-// calculateFCS returns the frame check sequence for a general format frame.
-func calculateFCS(buffer []byte) (fcs byte) {
-	for _, value := range buffer {
-		fcs ^= value
+		fmt.Printf("%+v", command)
 	}
-	return
 }
 
 func check(err error) {
