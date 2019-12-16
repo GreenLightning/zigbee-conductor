@@ -56,8 +56,11 @@ func validCommandFieldType(fieldType reflect.Type) bool {
 			return true
 		}
 	}
-	if fieldType.Kind() == reflect.Slice && fieldType.Elem().Kind() == reflect.Uint8 {
-		return true
+	if fieldType.Kind() == reflect.Slice {
+		elem := fieldType.Elem().Kind()
+		if elem == reflect.Uint8 || elem == reflect.Uint16 {
+			return true
+		}
 	}
 	return false
 }
@@ -77,9 +80,25 @@ func buildFrameForCommand(command interface{}) Frame {
 		fieldKind := field.Kind()
 
 		if fieldKind == reflect.Slice {
-			data := field.Bytes()
-			frame.Data = append(frame.Data, byte(len(data)))
-			frame.Data = append(frame.Data, data...)
+			switch field.Type().Elem().Kind() {
+			case reflect.Uint8:
+				data := field.Bytes()
+				frame.Data = append(frame.Data, byte(len(data)))
+				frame.Data = append(frame.Data, data...)
+
+			case reflect.Uint16:
+				data := field.Interface().([]uint16)
+				frame.Data = append(frame.Data, byte(len(data)))
+				for _, value := range data {
+					start := len(frame.Data)
+					frame.Data = append(frame.Data, 0, 0)
+					binary.LittleEndian.PutUint16(frame.Data[start:], uint16(value))
+				}
+
+			default:
+				panic(fmt.Sprintf("serialization for command field not implemented: kind=%v type=%v field=%s.%s", fieldKind, field.Type(), commandType.Name(), commandType.Field(f).Name))
+			}
+
 			continue
 		}
 
@@ -152,14 +171,35 @@ func parseCommandFromFrame(frame Frame) (interface{}, error) {
 			length := int(data[0])
 			data = data[1:]
 
-			if len(data) < length {
-				return nil, ErrCommandInvalidFrame
+			switch field.Type().Elem().Kind() {
+			case reflect.Uint8:
+				if len(data) < length {
+					return nil, ErrCommandInvalidFrame
+				}
+
+				fieldData := make([]byte, length)
+				copy(fieldData, data)
+				data = data[length:]
+
+				field.SetBytes(fieldData)
+
+			case reflect.Uint16:
+				if 2*len(data) < length {
+					return nil, ErrCommandInvalidFrame
+				}
+
+				fieldData := make([]uint16, length)
+				for i := range fieldData {
+					fieldData[i] = binary.LittleEndian.Uint16(data[2*i:])
+				}
+				data = data[2*length:]
+
+				field.Set(reflect.ValueOf(fieldData))
+
+			default:
+				panic(fmt.Sprintf("deserialization for command field not implemented: kind=%v type=%v field=%s.%s", fieldKind, field.Type(), commandType.Name(), commandType.Field(f).Name))
 			}
 
-			fieldData := data[:length]
-			data = data[length:]
-
-			field.SetBytes(fieldData)
 			continue
 		}
 
