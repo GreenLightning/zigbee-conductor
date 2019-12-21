@@ -90,6 +90,125 @@ type AfIncomingMsg struct {
 
 /* FRAME_SUBSYSTEM_ZDO*/
 
+func init() {
+	registerCommand(FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_ZDO, 0x05, ZdoActiveEpRequest{})
+	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_ZDO, 0x05, ZdoActiveEpResponse{})
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0x85, ZdoActiveEp{})
+}
+
+type ZdoActiveEpRequest struct {
+	DstAddr           uint16
+	NWKAddrOfInterest uint16
+}
+
+type ZdoActiveEpResponse struct {
+	Status byte
+}
+
+type ZdoActiveEp struct {
+	SrcAddr   uint16
+	Status    byte
+	NWKAddr   uint16
+	ActiveEPs []uint8
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_ZDO, 0x36, ZdoMgmtPermitJoinRequest{})
+	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_ZDO, 0x36, ZdoMgmtPermitJoinResponse{})
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0xb6, ZdoMgmtPermitJoin{})
+}
+
+type ZdoMgmtPermitJoinRequest struct {
+	AddrMode       byte
+	DstAddr        uint16
+	Duration       byte
+	TCSignificance byte
+}
+
+type ZdoMgmtPermitJoinResponse struct {
+	Status byte
+}
+
+type ZdoMgmtPermitJoin struct {
+	SrcAddr uint16
+	Status  byte
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_ZDO, 0x40, ZdoStartupFromAppRequest{})
+	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_ZDO, 0x40, ZdoStartupFromAppResponse{})
+}
+
+type ZdoStartupFromAppRequest struct {
+	StartDelay uint16
+}
+
+type ZdoStartupFromAppResponse struct {
+	Status byte
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_ZDO, 0x50, ZdoExtNwkInfoRequest{})
+	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_ZDO, 0x50, ZdoExtNwkInfoResponse{})
+}
+
+type ZdoExtNwkInfoRequest struct{}
+
+type ZdoExtNwkInfoResponse struct {
+	ShortAddress          uint16
+	PanID                 uint16
+	ParentAddress         uint16
+	ExtendedPanID         uint64
+	ExtendedParentAddress uint64
+	Channel               uint16
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0xc0, ZdoStateChangeInd{})
+}
+
+type ZdoStateChangeInd struct {
+	State byte
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0xc1, ZdoEndDeviceAnnceInd{})
+}
+
+const (
+	CapabilitiesAlternatePanCoordinator = 1 << 0
+	CapabilitiesRouter                  = 1 << 1
+	CapabilitiesMainPowered             = 1 << 2
+	CapabilitiesReceiverOnWhenIdle      = 1 << 3
+	CapabilitiesSecurityCapability      = 1 << 6
+)
+
+type ZdoEndDeviceAnnceInd struct {
+	SrcAddr      uint16
+	NwkAddr      uint16
+	IEEEAddr     uint64
+	Capabilities byte
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0xca, ZdoTcDevInd{})
+}
+
+// Trust Center Device Indication.
+type ZdoTcDevInd struct {
+	SrcNwkAddr    uint16
+	WasBroadcast  uint64
+	ParentNwkAddr uint16
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0xcb, ZdoPermitJoinInd{})
+}
+
+type ZdoPermitJoinInd struct {
+	Duration byte
+}
+
 /* FRAME_SUBSYSTEM_SAPI */
 
 func init() {
@@ -126,6 +245,20 @@ func init() {
 }
 
 type UtilGetDeviceInfoRequest struct{}
+
+const (
+	DeviceStateInitializedNotStarted   = 0x00 // Initialized - not started automatically
+	DeviceStateInitializedNotConnected = 0x01 // Initialized - not connected to anything
+	DeviceStateDiscovering             = 0x02 // Discovering PANs to join
+	DeviceStateJoining                 = 0x03 // Joining a PAN
+	DeviceStateRejoining               = 0x04 // Rejoining a PAN, only for end devices
+	DeviceStateJoinedNotAuthenticated  = 0x05 // Joined but not yet authenticated by trust center
+	DeviceStateEndDevice               = 0x06 // Started as device after authentication
+	DeviceStateRouter                  = 0x07 // Device joined, authenticated and is a router
+	DeviceStateCoordinatorStarting     = 0x08 // Starting as ZigBee Coordinator
+	DeviceStateCoordinator             = 0x09 // Started as ZigBee Coordinator
+	DeviceStateOrphan                  = 0x0A // Device has lost information about its parent
+)
 
 type UtilGetDeviceInfoResponse struct {
 	Status       byte

@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 )
 
@@ -138,11 +137,6 @@ func buildFrameForCommand(command interface{}) Frame {
 	}
 
 	return frame
-}
-
-func writeCommand(writer io.Writer, command interface{}) error {
-	frame := buildFrameForCommand(command)
-	return writeFrame(writer, frame)
 }
 
 var (
