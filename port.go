@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/jacobsa/go-serial/serial"
 )
@@ -21,13 +23,20 @@ type Callbacks struct {
 	BeforeWrite func(command interface{})
 	AfterRead   func(command interface{})
 
+	OnCommand func(command interface{})
+
 	OnReadError  func(err error) ErrorHandling
 	OnParseError func(err error, frame Frame) ErrorHandling
 }
 
+type responseHandler chan interface{}
+
 type Port struct {
 	sp  io.ReadWriteCloser
 	cbs Callbacks
+
+	handlerMutex sync.Mutex
+	handlers     map[FrameHeader]responseHandler
 }
 
 func NewPort(name string, callbacks Callbacks) (*Port, error) {
@@ -48,6 +57,9 @@ func NewPort(name string, callbacks Callbacks) (*Port, error) {
 	port := &Port{
 		sp:  sp,
 		cbs: callbacks,
+
+		handlerMutex: sync.Mutex{},
+		handlers:     make(map[FrameHeader]responseHandler),
 	}
 
 	go port.loop()
@@ -78,12 +90,58 @@ func (p *Port) WriteMagicByteForBootloader() error {
 	return err
 }
 
-func (p *Port) WriteCommand(command interface{}) error {
+func (p *Port) WriteCommand(command interface{}) (interface{}, error) {
 	if p.cbs.BeforeWrite != nil {
 		p.cbs.BeforeWrite(command)
 	}
+
 	frame := buildFrameForCommand(command)
-	return writeFrame(p.sp, frame)
+
+	var handler responseHandler
+	var responseHeader FrameHeader
+
+	if frame.Type == FRAME_TYPE_SREQ {
+		handler = make(responseHandler)
+
+		responseHeader = frame.FrameHeader
+		responseHeader.Type = FRAME_TYPE_SRSP
+
+		p.handlerMutex.Lock()
+		p.handlers[responseHeader] = handler
+		p.handlerMutex.Unlock()
+	}
+
+	err := writeFrame(p.sp, frame)
+	if err != nil {
+		return nil, err
+	}
+
+	if handler == nil {
+		return nil, nil
+	}
+
+	var response interface{}
+	select {
+	case response = <-handler:
+	case <-time.After(1000 * time.Millisecond):
+	}
+
+	p.handlerMutex.Lock()
+	delete(p.handlers, responseHeader)
+	p.handlerMutex.Unlock()
+
+	if response == nil {
+		select {
+		case response = <-handler:
+		default:
+		}
+	}
+
+	if response == nil {
+		return nil, errors.New("response timeout")
+	}
+
+	return response, nil
 }
 
 func (p *Port) loop() {
@@ -124,6 +182,17 @@ func (p *Port) loop() {
 
 		if p.cbs.AfterRead != nil {
 			p.cbs.AfterRead(command)
+		}
+
+		var handler responseHandler
+		p.handlerMutex.Lock()
+		handler = p.handlers[frame.FrameHeader]
+		p.handlerMutex.Unlock()
+
+		if handler != nil {
+			handler <- command
+		} else if p.cbs.OnCommand != nil {
+			p.cbs.OnCommand(command)
 		}
 	}
 }

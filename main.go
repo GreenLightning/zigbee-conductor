@@ -52,9 +52,16 @@ func main() {
 
 	check(port.WriteMagicByteForBootloader())
 
-	check(port.WriteCommand(SysVersionRequest{}))
+	_, err = port.WriteCommand(SysVersionRequest{})
+	check(err)
 
-	check(port.WriteCommand(ZdoStartupFromAppRequest{StartDelay: 100}))
+	response, err := port.WriteCommand(UtilGetDeviceInfoRequest{})
+	check(err)
+
+	if response := response.(UtilGetDeviceInfoResponse); response.DeviceState != DeviceStateCoordinator {
+		_, err = port.WriteCommand(ZdoStartupFromAppRequest{StartDelay: 100})
+		check(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -65,7 +72,8 @@ func main() {
 	if *permitJoinFlag {
 		permitJoinRequest.Duration = 0xff // turn on indefinitely
 	}
-	check(port.WriteCommand(permitJoinRequest))
+	_, err = port.WriteCommand(permitJoinRequest)
+	check(err)
 
 	time.Sleep(30 * time.Second)
 }
