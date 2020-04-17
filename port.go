@@ -148,6 +148,9 @@ func (p *Port) loop() {
 	r := bufio.NewReaderSize(p.sp, 256)
 	for {
 		frame, err := readFrame(r)
+		if err == io.ErrNoProgress {
+			continue
+		}
 		if err != nil {
 			if errors.Is(err, os.ErrClosed) {
 				break
