@@ -1,5 +1,44 @@
 package main
 
+import "fmt"
+
+type DeviceState uint8
+
+const (
+	DeviceStateInitializedNotStarted   DeviceState = 0x00 // Initialized - not started automatically
+	DeviceStateInitializedNotConnected DeviceState = 0x01 // Initialized - not connected to anything
+	DeviceStateDiscovering             DeviceState = 0x02 // Discovering PANs to join
+	DeviceStateJoining                 DeviceState = 0x03 // Joining a PAN
+	DeviceStateRejoining               DeviceState = 0x04 // Rejoining a PAN, only for end devices
+	DeviceStateJoinedNotAuthenticated  DeviceState = 0x05 // Joined but not yet authenticated by trust center
+	DeviceStateEndDevice               DeviceState = 0x06 // Started as device after authentication
+	DeviceStateRouter                  DeviceState = 0x07 // Device joined, authenticated and is a router
+	DeviceStateCoordinatorStarting     DeviceState = 0x08 // Starting as ZigBee Coordinator
+	DeviceStateCoordinator             DeviceState = 0x09 // Started as ZigBee Coordinator
+	DeviceStateOrphan                  DeviceState = 0x0A // Device has lost information about its parent
+)
+
+var DeviceStateNames = []string{
+	"InitializedNotStarted",
+	"InitializedNotConnected",
+	"Discovering",
+	"Joining",
+	"Rejoining",
+	"JoinedNotAuthenticated",
+	"EndDevice",
+	"Router",
+	"CoordinatorStarting",
+	"Coordinator",
+	"Orphan",
+}
+
+func (state DeviceState) String() string {
+	if int(state) < len(DeviceStateNames) {
+		return fmt.Sprintf("%s(%d)", DeviceStateNames[state], uint8(state))
+	}
+	return fmt.Sprintf("%d", uint8(state))
+}
+
 /* FRAME_SUBSYSTEM_SYS */
 
 func init() {
@@ -187,7 +226,7 @@ func init() {
 }
 
 type ZdoStateChangeInd struct {
-	State byte
+	State DeviceState
 }
 
 func init() {
@@ -265,26 +304,12 @@ func init() {
 
 type UtilGetDeviceInfoRequest struct{}
 
-const (
-	DeviceStateInitializedNotStarted   = 0x00 // Initialized - not started automatically
-	DeviceStateInitializedNotConnected = 0x01 // Initialized - not connected to anything
-	DeviceStateDiscovering             = 0x02 // Discovering PANs to join
-	DeviceStateJoining                 = 0x03 // Joining a PAN
-	DeviceStateRejoining               = 0x04 // Rejoining a PAN, only for end devices
-	DeviceStateJoinedNotAuthenticated  = 0x05 // Joined but not yet authenticated by trust center
-	DeviceStateEndDevice               = 0x06 // Started as device after authentication
-	DeviceStateRouter                  = 0x07 // Device joined, authenticated and is a router
-	DeviceStateCoordinatorStarting     = 0x08 // Starting as ZigBee Coordinator
-	DeviceStateCoordinator             = 0x09 // Started as ZigBee Coordinator
-	DeviceStateOrphan                  = 0x0A // Device has lost information about its parent
-)
-
 type UtilGetDeviceInfoResponse struct {
 	Status       byte
 	IEEEAddr     uint64
 	ShortAddr    uint16
 	DeviceType   uint8
-	DeviceState  uint8
+	DeviceState  DeviceState
 	AssocDevices []uint16
 }
 
