@@ -45,6 +45,25 @@ type SysOsalNvWriteResponse struct {
 	Status byte
 }
 
+func init() {
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_SYS, 0x80, SysResetInd{})
+}
+
+const (
+	ResetReasonPowerUp  = 0x00
+	ResetReasonExternal = 0x01
+	ResetReasonWatchDog = 0x02
+)
+
+type SysResetInd struct {
+	Reason       uint8
+	TransportRev uint8
+	Product      uint8
+	MajorRel     uint8
+	MinorRel     uint8
+	MaintRel     uint8
+}
+
 /* FRAME_SUBSYSTEM_MAC */
 
 /* FRAME_SUBSYSTEM_NWK */
