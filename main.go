@@ -6,8 +6,22 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"time"
 )
+
+type Endpoint struct {
+	Endpoint  uint8
+	AppProfID uint16
+}
+
+var endpoints = []Endpoint{
+	Endpoint{1, 0x0104},
+	Endpoint{2, 0x0101},
+	Endpoint{3, 0x0105},
+	Endpoint{4, 0x0107},
+	Endpoint{5, 0x0108},
+	Endpoint{6, 0x0109},
+	Endpoint{8, 0x0104},
+}
 
 func main() {
 	portFlag := flag.String("port", "/dev/ttyACM0", "name of the serial port to use")
@@ -59,11 +73,38 @@ func main() {
 	check(err)
 
 	if response := response.(UtilGetDeviceInfoResponse); response.DeviceState != DeviceStateCoordinator {
+		handler := port.RegisterHandler(ZdoStateChangeInd{})
 		_, err = port.WriteCommand(ZdoStartupFromAppRequest{StartDelay: 100})
+		check(err)
+		_, err := handler.Receive()
 		check(err)
 	}
 
-	time.Sleep(1 * time.Second)
+	handler := port.RegisterHandler(ZdoActiveEP{})
+	_, err = port.WriteCommand(ZdoActiveEPRequest{})
+	check(err)
+	cmd, err := handler.Receive()
+	check(err)
+
+	activeEPs := cmd.(ZdoActiveEP)
+	for _, endpoint := range endpoints {
+		found := false
+		for _, ep := range activeEPs.ActiveEPs {
+			if ep == endpoint.Endpoint {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			_, err = port.WriteCommand(AfRegisterRequest{
+				Endpoint:    endpoint.Endpoint,
+				AppProfID:   endpoint.AppProfID,
+				AppDeviceID: 0x0005,
+				LatencyReq:  LatencyReqNoLatency,
+			})
+		}
+	}
 
 	permitJoinRequest := ZdoMgmtPermitJoinRequest{
 		AddrMode: 0x0f,
@@ -75,7 +116,7 @@ func main() {
 	_, err = port.WriteCommand(permitJoinRequest)
 	check(err)
 
-	time.Sleep(30 * time.Second)
+	select {}
 }
 
 func check(err error) {

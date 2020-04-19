@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -23,20 +24,48 @@ type Callbacks struct {
 	BeforeWrite func(command interface{})
 	AfterRead   func(command interface{})
 
-	OnCommand func(command interface{})
-
 	OnReadError  func(err error) ErrorHandling
 	OnParseError func(err error, frame Frame) ErrorHandling
 }
 
-type responseHandler chan interface{}
+var ErrTimeout = errors.New("command timed out")
+
+type handlerResult struct {
+	command interface{}
+	err     error
+}
+
+type Handler struct {
+	results chan handlerResult
+	timer   *time.Timer
+}
+
+func newHandler() *Handler {
+	return &Handler{
+		results: make(chan handlerResult, 1),
+	}
+}
+
+func (h *Handler) fail() {
+	h.results <- handlerResult{nil, ErrTimeout}
+}
+
+func (h *Handler) fulfill(command interface{}) {
+	h.results <- handlerResult{command, nil}
+	h.timer.Stop()
+}
+
+func (h *Handler) Receive() (interface{}, error) {
+	result := <-h.results
+	return result.command, result.err
+}
 
 type Port struct {
 	sp  io.ReadWriteCloser
 	cbs Callbacks
 
 	handlerMutex sync.Mutex
-	handlers     map[FrameHeader]responseHandler
+	handlers     map[FrameHeader]*Handler
 }
 
 func NewPort(name string, callbacks Callbacks) (*Port, error) {
@@ -59,7 +88,7 @@ func NewPort(name string, callbacks Callbacks) (*Port, error) {
 		cbs: callbacks,
 
 		handlerMutex: sync.Mutex{},
-		handlers:     make(map[FrameHeader]responseHandler),
+		handlers:     make(map[FrameHeader]*Handler),
 	}
 
 	go port.loop()
@@ -69,6 +98,43 @@ func NewPort(name string, callbacks Callbacks) (*Port, error) {
 
 func (p *Port) Close() error {
 	return p.sp.Close()
+}
+
+func (p *Port) RegisterHandler(commandPrototype interface{}) *Handler {
+	header := getHeaderForCommand(commandPrototype)
+	return p.registerHandlerForHeader(header, 10*time.Second)
+}
+
+func (p *Port) registerHandlerForHeader(header FrameHeader, timeout time.Duration) *Handler {
+	handler := newHandler()
+
+	p.handlerMutex.Lock()
+	defer p.handlerMutex.Unlock()
+
+	if _, ok := p.handlers[header]; ok {
+		panic(fmt.Sprintf("handler for %v already exists", header))
+	}
+	p.handlers[header] = handler
+
+	handler.timer = time.AfterFunc(timeout, func() {
+		p.removeHandler(handler, header)
+	})
+
+	return handler
+}
+
+func (p *Port) removeHandler(handler *Handler, header FrameHeader) {
+	found := false
+	p.handlerMutex.Lock()
+	if p.handlers[header] == handler {
+		delete(p.handlers, header)
+		found = true
+	}
+	p.handlerMutex.Unlock()
+
+	if found {
+		handler.fail()
+	}
 }
 
 func (p *Port) WriteMagicByteForBootloader() error {
@@ -97,18 +163,12 @@ func (p *Port) WriteCommand(command interface{}) (interface{}, error) {
 
 	frame := buildFrameForCommand(command)
 
-	var handler responseHandler
-	var responseHeader FrameHeader
+	var handler *Handler
 
 	if frame.Type == FRAME_TYPE_SREQ {
-		handler = make(responseHandler)
-
-		responseHeader = frame.FrameHeader
+		responseHeader := frame.FrameHeader
 		responseHeader.Type = FRAME_TYPE_SRSP
-
-		p.handlerMutex.Lock()
-		p.handlers[responseHeader] = handler
-		p.handlerMutex.Unlock()
+		handler = p.registerHandlerForHeader(responseHeader, 1*time.Second)
 	}
 
 	err := writeFrame(p.sp, frame)
@@ -116,32 +176,11 @@ func (p *Port) WriteCommand(command interface{}) (interface{}, error) {
 		return nil, err
 	}
 
-	if handler == nil {
-		return nil, nil
+	if handler != nil {
+		return handler.Receive()
 	}
 
-	var response interface{}
-	select {
-	case response = <-handler:
-	case <-time.After(1000 * time.Millisecond):
-	}
-
-	p.handlerMutex.Lock()
-	delete(p.handlers, responseHeader)
-	p.handlerMutex.Unlock()
-
-	if response == nil {
-		select {
-		case response = <-handler:
-		default:
-		}
-	}
-
-	if response == nil {
-		return nil, errors.New("response timeout")
-	}
-
-	return response, nil
+	return nil, nil
 }
 
 func (p *Port) loop() {
@@ -187,15 +226,13 @@ func (p *Port) loop() {
 			p.cbs.AfterRead(command)
 		}
 
-		var handler responseHandler
 		p.handlerMutex.Lock()
-		handler = p.handlers[frame.FrameHeader]
+		handler := p.handlers[frame.FrameHeader]
+		delete(p.handlers, frame.FrameHeader)
 		p.handlerMutex.Unlock()
 
 		if handler != nil {
-			handler <- command
-		} else if p.cbs.OnCommand != nil {
-			p.cbs.OnCommand(command)
+			handler.fulfill(command)
 		}
 	}
 }

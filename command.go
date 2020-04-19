@@ -64,14 +64,23 @@ func validCommandFieldType(fieldType reflect.Type) bool {
 	return false
 }
 
-func buildFrameForCommand(command interface{}) Frame {
+func getHeaderForCommand(command interface{}) FrameHeader {
 	commandType := reflect.TypeOf(command)
+	return getHeaderForCommandType(commandType)
+}
+
+func getHeaderForCommandType(commandType reflect.Type) FrameHeader {
 	header, ok := frameHeaderByCommandType[commandType]
 	if !ok {
 		panic(fmt.Sprintf("command %s has never been registered", commandType.Name()))
 	}
 
-	frame := Frame{FrameHeader: header}
+	return header
+}
+
+func buildFrameForCommand(command interface{}) Frame {
+	commandType := reflect.TypeOf(command)
+	frame := Frame{FrameHeader: getHeaderForCommandType(commandType)}
 
 	commandValue := reflect.ValueOf(command)
 	for f := 0; f < commandValue.NumField(); f++ {

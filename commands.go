@@ -114,8 +114,14 @@ func init() {
 	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_AF, 0x00, AfRegisterResponse{})
 }
 
+const (
+	LatencyReqNoLatency   = 0x00
+	LatencyReqFastBeacons = 0x01
+	LatencyReqSlowBeacons = 0x02
+)
+
 type AfRegisterRequest struct {
-	EndPoint       uint8
+	Endpoint       uint8
 	AppProfID      uint16
 	AppDeviceID    uint16
 	AddDevVer      uint8
@@ -149,21 +155,21 @@ type AfIncomingMsg struct {
 /* FRAME_SUBSYSTEM_ZDO*/
 
 func init() {
-	registerCommand(FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_ZDO, 0x05, ZdoActiveEpRequest{})
-	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_ZDO, 0x05, ZdoActiveEpResponse{})
-	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0x85, ZdoActiveEp{})
+	registerCommand(FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_ZDO, 0x05, ZdoActiveEPRequest{})
+	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_ZDO, 0x05, ZdoActiveEPResponse{})
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0x85, ZdoActiveEP{})
 }
 
-type ZdoActiveEpRequest struct {
+type ZdoActiveEPRequest struct {
 	DstAddr           uint16
 	NWKAddrOfInterest uint16
 }
 
-type ZdoActiveEpResponse struct {
+type ZdoActiveEPResponse struct {
 	Status byte
 }
 
-type ZdoActiveEp struct {
+type ZdoActiveEP struct {
 	SrcAddr   uint16
 	Status    byte
 	NWKAddr   uint16
