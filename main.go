@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+
+	"github.com/GreenLightning/zigbee-conductor/zigbee"
 )
 
 type Endpoint struct {
@@ -29,7 +31,7 @@ func main() {
 
 	flag.Parse()
 
-	callbacks := Callbacks{
+	callbacks := zigbee.Callbacks{
 		BeforeWrite: func(command interface{}) {
 			fmt.Printf("--> %s%+v\n", reflect.TypeOf(command).Name(), command)
 		},
@@ -38,55 +40,55 @@ func main() {
 			fmt.Printf("<-- %s%+v\n", reflect.TypeOf(command).Name(), command)
 		},
 
-		OnReadError: func(err error) ErrorHandling {
-			if errors.Is(err, ErrInvalidFrame) || errors.Is(err, ErrGarbage) {
+		OnReadError: func(err error) zigbee.ErrorHandling {
+			if errors.Is(err, zigbee.ErrInvalidFrame) || errors.Is(err, zigbee.ErrGarbage) {
 				log.Println(err)
-				return ErrorHandlingContinue
+				return zigbee.ErrorHandlingContinue
 			}
-			return ErrorHandlingPanic
+			return zigbee.ErrorHandlingPanic
 		},
 
-		OnParseError: func(err error, frame Frame) ErrorHandling {
-			if err == ErrCommandInvalidFrame {
+		OnParseError: func(err error, frame zigbee.Frame) zigbee.ErrorHandling {
+			if err == zigbee.ErrCommandInvalidFrame {
 				log.Println("invalid frame")
-				return ErrorHandlingContinue
+				return zigbee.ErrorHandlingContinue
 			}
-			if err == ErrCommandUnknownFrameHeader {
+			if err == zigbee.ErrCommandUnknownFrameHeader {
 				log.Println("unknown frame:", frame)
-				return ErrorHandlingContinue
+				return zigbee.ErrorHandlingContinue
 			}
-			return ErrorHandlingPanic
+			return zigbee.ErrorHandlingPanic
 		},
 	}
 
-	port, err := NewPort(*portFlag, callbacks)
+	port, err := zigbee.NewPort(*portFlag, callbacks)
 	check(err)
 
 	defer port.Close()
 
 	check(port.WriteMagicByteForBootloader())
 
-	_, err = port.WriteCommand(SysVersionRequest{})
+	_, err = port.WriteCommand(zigbee.SysVersionRequest{})
 	check(err)
 
-	response, err := port.WriteCommand(UtilGetDeviceInfoRequest{})
+	response, err := port.WriteCommand(zigbee.UtilGetDeviceInfoRequest{})
 	check(err)
 
-	if response := response.(UtilGetDeviceInfoResponse); response.DeviceState != DeviceStateCoordinator {
-		handler := port.RegisterHandler(ZdoStateChangeInd{})
-		_, err = port.WriteCommand(ZdoStartupFromAppRequest{StartDelay: 100})
+	if response := response.(zigbee.UtilGetDeviceInfoResponse); response.DeviceState != zigbee.DeviceStateCoordinator {
+		handler := port.RegisterHandler(zigbee.ZdoStateChangeInd{})
+		_, err = port.WriteCommand(zigbee.ZdoStartupFromAppRequest{StartDelay: 100})
 		check(err)
 		_, err := handler.Receive()
 		check(err)
 	}
 
-	handler := port.RegisterHandler(ZdoActiveEP{})
-	_, err = port.WriteCommand(ZdoActiveEPRequest{})
+	handler := port.RegisterHandler(zigbee.ZdoActiveEP{})
+	_, err = port.WriteCommand(zigbee.ZdoActiveEPRequest{})
 	check(err)
 	cmd, err := handler.Receive()
 	check(err)
 
-	activeEPs := cmd.(ZdoActiveEP)
+	activeEPs := cmd.(zigbee.ZdoActiveEP)
 	for _, endpoint := range endpoints {
 		found := false
 		for _, ep := range activeEPs.ActiveEPs {
@@ -97,16 +99,16 @@ func main() {
 		}
 
 		if !found {
-			_, err = port.WriteCommand(AfRegisterRequest{
+			_, err = port.WriteCommand(zigbee.AfRegisterRequest{
 				Endpoint:    endpoint.Endpoint,
 				AppProfID:   endpoint.AppProfID,
 				AppDeviceID: 0x0005,
-				LatencyReq:  LatencyReqNoLatency,
+				LatencyReq:  zigbee.LatencyReqNoLatency,
 			})
 		}
 	}
 
-	permitJoinRequest := ZdoMgmtPermitJoinRequest{
+	permitJoinRequest := zigbee.ZdoMgmtPermitJoinRequest{
 		AddrMode: 0x0f,
 		DstAddr:  0xfffc, // broadcast
 	}
