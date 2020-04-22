@@ -17,7 +17,7 @@ type ErrorHandling int
 const (
 	ErrorHandlingPanic    ErrorHandling = 0
 	ErrorHandlingStop     ErrorHandling = 1
-	ErrorHandlingContinue ErrorHandling = 1
+	ErrorHandlingContinue ErrorHandling = 2
 )
 
 type Callbacks struct {
@@ -52,7 +52,9 @@ func (h *Handler) fail() {
 
 func (h *Handler) fulfill(command interface{}) {
 	h.results <- handlerResult{command, nil}
-	h.timer.Stop()
+	if h.timer != nil {
+		h.timer.Stop()
+	}
 }
 
 func (h *Handler) Receive() (interface{}, error) {
@@ -100,12 +102,17 @@ func (p *Port) Close() error {
 	return p.sp.Close()
 }
 
-func (p *Port) RegisterHandler(commandPrototype interface{}) *Handler {
+func (p *Port) RegisterOneOffHandler(commandPrototype interface{}) *Handler {
 	header := getHeaderForCommand(commandPrototype)
-	return p.registerHandlerForHeader(header, 10*time.Second)
+	return p.registerHandler(header, 10*time.Second)
 }
 
-func (p *Port) registerHandlerForHeader(header FrameHeader, timeout time.Duration) *Handler {
+func (p *Port) RegisterPermanentHandler(commandPrototype interface{}) *Handler {
+	header := getHeaderForCommand(commandPrototype)
+	return p.registerHandler(header, 0)
+}
+
+func (p *Port) registerHandler(header FrameHeader, timeout time.Duration) *Handler {
 	handler := newHandler()
 
 	p.handlerMutex.Lock()
@@ -116,9 +123,11 @@ func (p *Port) registerHandlerForHeader(header FrameHeader, timeout time.Duratio
 	}
 	p.handlers[header] = handler
 
-	handler.timer = time.AfterFunc(timeout, func() {
-		p.removeHandler(handler, header)
-	})
+	if timeout != 0 {
+		handler.timer = time.AfterFunc(timeout, func() {
+			p.removeHandler(handler, header)
+		})
+	}
 
 	return handler
 }
@@ -168,7 +177,7 @@ func (p *Port) WriteCommand(command interface{}) (interface{}, error) {
 	if frame.Type == FRAME_TYPE_SREQ {
 		responseHeader := frame.FrameHeader
 		responseHeader.Type = FRAME_TYPE_SRSP
-		handler = p.registerHandlerForHeader(responseHeader, 1*time.Second)
+		handler = p.registerHandler(responseHeader, 1*time.Second)
 	}
 
 	err := writeFrame(p.sp, frame)
@@ -228,7 +237,9 @@ func (p *Port) loop() {
 
 		p.handlerMutex.Lock()
 		handler := p.handlers[frame.FrameHeader]
-		delete(p.handlers, frame.FrameHeader)
+		if handler != nil && handler.timer != nil {
+			delete(p.handlers, frame.FrameHeader)
+		}
 		p.handlerMutex.Unlock()
 
 		if handler != nil {

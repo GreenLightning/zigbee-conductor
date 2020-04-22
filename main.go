@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/GreenLightning/zigbee-conductor/zigbee"
 )
@@ -20,9 +21,15 @@ func main() {
 
 	defer controller.Close()
 
+	handler := controller.RegisterPermanentHandler(zigbee.AfIncomingMsg{})
+
 	check(controller.Start())
 
-	select {}
+	for {
+		cmd, err := handler.Receive()
+		check(err)
+		log.Println(cmd)
+	}
 }
 
 func check(err error) {

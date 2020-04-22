@@ -91,7 +91,7 @@ func (c *Controller) Start() error {
 	}
 
 	if response := response.(UtilGetDeviceInfoResponse); response.DeviceState != DeviceStateCoordinator {
-		handler := c.port.RegisterHandler(ZdoStateChangeInd{})
+		handler := c.port.RegisterOneOffHandler(ZdoStateChangeInd{})
 		_, err = c.port.WriteCommand(ZdoStartupFromAppRequest{StartDelay: 100})
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (c *Controller) Start() error {
 		}
 	}
 
-	handler := c.port.RegisterHandler(ZdoActiveEP{})
+	handler := c.port.RegisterOneOffHandler(ZdoActiveEP{})
 	_, err = c.port.WriteCommand(ZdoActiveEPRequest{})
 	if err != nil {
 		return err
@@ -152,4 +152,8 @@ func (c *Controller) Start() error {
 
 func (c *Controller) Close() error {
 	return c.port.Close()
+}
+
+func (c *Controller) RegisterPermanentHandler(commandPrototype interface{}) *Handler {
+	return c.port.RegisterPermanentHandler(commandPrototype)
 }
