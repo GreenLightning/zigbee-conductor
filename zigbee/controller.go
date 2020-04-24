@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"reflect"
 )
 
 type ControllerSettings struct {
-	Port       string
-	PermitJoin bool
+	Port        string
+	PermitJoin  bool
+	LogCommands bool
+	LogErrors   bool
 }
 
 type Controller struct {
@@ -19,17 +20,11 @@ type Controller struct {
 
 func NewController(settings ControllerSettings) (*Controller, error) {
 	callbacks := Callbacks{
-		BeforeWrite: func(command interface{}) {
-			fmt.Printf("--> %s%+v\n", reflect.TypeOf(command).Name(), command)
-		},
-
-		AfterRead: func(command interface{}) {
-			fmt.Printf("<-- %s%+v\n", reflect.TypeOf(command).Name(), command)
-		},
-
 		OnReadError: func(err error) ErrorHandling {
 			if errors.Is(err, ErrInvalidFrame) || errors.Is(err, ErrGarbage) {
-				log.Println(err)
+				if settings.LogErrors {
+					log.Println("[zigbee]", err)
+				}
 				return ErrorHandlingContinue
 			}
 			return ErrorHandlingPanic
@@ -37,15 +32,28 @@ func NewController(settings ControllerSettings) (*Controller, error) {
 
 		OnParseError: func(err error, frame Frame) ErrorHandling {
 			if err == ErrCommandInvalidFrame {
-				log.Println("invalid frame")
+				if settings.LogErrors {
+					log.Println("[zigbee] invalid frame")
+				}
 				return ErrorHandlingContinue
 			}
 			if err == ErrCommandUnknownFrameHeader {
-				log.Println("unknown frame:", frame)
+				if settings.LogErrors {
+					log.Println("[zigbee] unknown frame:", frame)
+				}
 				return ErrorHandlingContinue
 			}
 			return ErrorHandlingPanic
 		},
+	}
+
+	if settings.LogCommands {
+		callbacks.BeforeWrite = func(command interface{}) {
+			fmt.Printf("--> %T%+v\n", command, command)
+		}
+		callbacks.AfterRead = func(command interface{}) {
+			fmt.Printf("<-- %T%+v\n", command, command)
+		}
 	}
 
 	port, err := NewPort(settings.Port, callbacks)

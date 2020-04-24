@@ -14,8 +14,10 @@ func main() {
 	flag.Parse()
 
 	controller, err := zigbee.NewController(zigbee.ControllerSettings{
-		Port:       *portFlag,
-		PermitJoin: *permitJoinFlag,
+		Port:        *portFlag,
+		PermitJoin:  *permitJoinFlag,
+		LogCommands: true,
+		LogErrors:   true,
 	})
 	check(err)
 
