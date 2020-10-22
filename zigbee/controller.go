@@ -85,39 +85,39 @@ var endpoints = []Endpoint{
 func (c *Controller) Start() error {
 	err := c.port.WriteMagicByteForBootloader()
 	if err != nil {
-		return err
+		return fmt.Errorf("writing magic byte for bootloader: %w", err)
 	}
 
 	_, err = c.port.WriteCommand(SysVersionRequest{})
 	if err != nil {
-		return err
+		return fmt.Errorf("getting system version: %w", err)
 	}
 
 	response, err := c.port.WriteCommand(UtilGetDeviceInfoRequest{})
 	if err != nil {
-		return err
+		return fmt.Errorf("getting device info: %w", err)
 	}
 
 	if response := response.(UtilGetDeviceInfoResponse); response.DeviceState != DeviceStateCoordinator {
 		handler := c.port.RegisterOneOffHandler(ZdoStateChangeInd{})
 		_, err = c.port.WriteCommand(ZdoStartupFromAppRequest{StartDelay: 100})
 		if err != nil {
-			return err
+			return fmt.Errorf("sending startup from app: %w", err)
 		}
 		_, err := handler.Receive()
 		if err != nil {
-			return err
+			return fmt.Errorf("waiting for state change: %w", err)
 		}
 	}
 
 	handler := c.port.RegisterOneOffHandler(ZdoActiveEP{})
 	_, err = c.port.WriteCommand(ZdoActiveEPRequest{})
 	if err != nil {
-		return err
+		return fmt.Errorf("getting active endpoints: %w", err)
 	}
 	cmd, err := handler.Receive()
 	if err != nil {
-		return err
+		return fmt.Errorf("waiting for active endpoints: %w", err)
 	}
 
 	activeEPs := cmd.(ZdoActiveEP)
@@ -138,7 +138,7 @@ func (c *Controller) Start() error {
 				LatencyReq:  LatencyReqNoLatency,
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("sending register endpoint: %w", err)
 			}
 		}
 	}
@@ -152,7 +152,7 @@ func (c *Controller) Start() error {
 	}
 	_, err = c.port.WriteCommand(permitJoinRequest)
 	if err != nil {
-		return err
+		return fmt.Errorf("sending permit join: %w", err)
 	}
 
 	return nil
