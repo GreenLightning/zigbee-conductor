@@ -166,6 +166,10 @@ func (p *Port) WriteMagicByteForBootloader() error {
 }
 
 func (p *Port) WriteCommand(command interface{}) (interface{}, error) {
+	return p.WriteCommandTimeout(command, 1*time.Second)
+}
+
+func (p *Port) WriteCommandTimeout(command interface{}, timeout time.Duration) (interface{}, error) {
 	if p.cbs.BeforeWrite != nil {
 		p.cbs.BeforeWrite(command)
 	}
@@ -177,7 +181,7 @@ func (p *Port) WriteCommand(command interface{}) (interface{}, error) {
 	if frame.Type == FRAME_TYPE_SREQ {
 		responseHeader := frame.FrameHeader
 		responseHeader.Type = FRAME_TYPE_SRSP
-		handler = p.registerHandler(responseHeader, 1*time.Second)
+		handler = p.registerHandler(responseHeader, timeout)
 	}
 
 	err := writeFrame(p.sp, frame)
