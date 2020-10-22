@@ -3,6 +3,9 @@
 	[
 		{
 			"path": "."
+		},
+		{
+			"path": "S:\\Files\\ZigBee"
 		}
 	],
 	"build_systems":
