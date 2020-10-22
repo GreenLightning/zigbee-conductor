@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 )
 
 type ControllerSettings struct {
@@ -88,7 +89,10 @@ func (c *Controller) Start() error {
 		return fmt.Errorf("writing magic byte for bootloader: %w", err)
 	}
 
-	_, err = c.port.WriteCommand(SysVersionRequest{})
+	// This command is used to test communication with the device.
+	// The response may be slow if the device has to finish booting,
+	// therefore we use a custom timeout value.
+	_, err = c.port.WriteCommandTimeout(SysVersionRequest{}, 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("getting system version: %w", err)
 	}
