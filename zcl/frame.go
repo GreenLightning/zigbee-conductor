@@ -1,6 +1,7 @@
 package zcl
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 )
@@ -15,9 +16,9 @@ const (
 func (t FrameType) String() string {
 	switch t {
 	case FRAME_TYPE_GLOBAL:
-		return "GLOBAL"
+		return "Global"
 	case FRAME_TYPE_LOCAL:
-		return "LOCAL"
+		return "Local"
 	default:
 		return fmt.Sprintf("Reserved(%d)", byte(t))
 	}
@@ -35,12 +36,15 @@ type FrameHeader struct {
 }
 
 type Frame struct {
+	ClusterID ClusterID
 	FrameHeader
 	Data []byte
 }
 
-func ParseFrame(data []byte) (Frame, error) {
+func ParseFrame(clusterID uint16, data []byte) (Frame, error) {
 	var frame Frame
+
+	frame.ClusterID = ClusterID(clusterID)
 
 	if len(data) < 1 {
 		return frame, errors.New("no data")
@@ -57,7 +61,7 @@ func ParseFrame(data []byte) (Frame, error) {
 		if len(data) < 2 {
 			return frame, errors.New("not enough data")
 		}
-		frame.ManufacturerCode = (uint16(data[0]) << 8) & uint16(data[1])
+		frame.ManufacturerCode = binary.LittleEndian.Uint16(data)
 		data = data[2:]
 	}
 
@@ -67,7 +71,7 @@ func ParseFrame(data []byte) (Frame, error) {
 
 	frame.TransactionSequenceNumber = data[0]
 	frame.CommandIdentifier = data[1]
-	data = data[:2]
+	data = data[2:]
 
 	frame.Data = data
 	return frame, nil
@@ -95,7 +99,9 @@ func SerializeFrame(frame Frame) []byte {
 	data = append(data, control)
 
 	if frame.ManufacturerSpecific {
-		data = append(data, byte(frame.ManufacturerCode>>8), byte(frame.ManufacturerCode&0xff))
+		start := len(data)
+		data = append(data, 0, 0)
+		binary.LittleEndian.PutUint16(data[start:], frame.ManufacturerCode)
 	}
 
 	data = append(data, frame.TransactionSequenceNumber)
