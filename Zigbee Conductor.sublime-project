@@ -20,14 +20,18 @@
 			}
 		},
 		{
-			"name": "Format",
-			"shell_cmd": "go fmt ./...",
-			"working_dir": "$project_path"
-		},
-		{
 			"name": "Count Lines of Code",
 			"working_dir": "$project_path",
 			"shell_cmd": "cloc -by-file ."
+		},
+		{
+			"name": "Run Unit Tests",
+			"working_dir": "$project_path",
+			"shell_cmd": "go test github.com/GreenLightning/zigbee-conductor/... || exit 0",
+			"file_regex": "^(.+?):(\\d+?):(\\d+)?: (.+)$",
+			"windows": {
+				"shell_cmd": "go test github.com/GreenLightning/zigbee-conductor/... || exit /b 0"
+			}
 		},
 		{
 			"name": "Package and Upload (2Touch)",

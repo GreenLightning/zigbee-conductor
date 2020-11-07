@@ -289,11 +289,8 @@ func (typ DataType) SizeInBytes() int {
 	}
 }
 
-type InvalidType error
-
-var InvalidValue InvalidType = errors.New("invalid")
-
 var ErrNotEnoughData = errors.New("not enough data")
+var ErrInvalidData = errors.New("invalid data")
 var ErrNotImplemented = errors.New("not implemented")
 
 func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
@@ -316,70 +313,146 @@ func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
 			return false, data[1:], nil
 		} else if value == 1 {
 			return true, data[1:], nil
+		} else if value == 0xff {
+			return nil, data[1:], nil
 		} else {
-			return InvalidValue, data[1:], nil
+			return nil, data[1:], ErrInvalidData
 		}
 
-	case DataTypeBitmap8, DataTypeUint8:
+	case DataTypeBitmap8:
 		value := uint8(data[0])
 		return value, data[1:], nil
 
-	case DataTypeBitmap16, DataTypeUint16:
+	case DataTypeBitmap16:
 		value := binary.LittleEndian.Uint16(data)
 		return value, data[2:], nil
 
-	case DataTypeBitmap24, DataTypeUint24:
+	case DataTypeBitmap24:
 		var buffer [4]byte
-		copy(buffer, data[:3])
+		copy(buffer[:], data[:3])
 		value := binary.LittleEndian.Uint32(buffer[:])
 		return value, data[3:], nil
 
-	case DataTypeBitmap32, DataTypeUint32:
+	case DataTypeBitmap32:
 		value := binary.LittleEndian.Uint32(data)
 		return value, data[4:], nil
 
-	case DataTypeBitmap40, DataTypeUint40:
-		fallthrough
-	case DataTypeBitmap48, DataTypeUint48:
-		fallthrough
-	case DataTypeBitmap56, DataTypeUint56:
+	case DataTypeBitmap40, DataTypeBitmap48, DataTypeBitmap56:
 		var buffer [8]byte
-		copy(buffer, data[:size])
+		copy(buffer[:], data[:size])
 		value := binary.LittleEndian.Uint64(buffer[:])
 		return value, data[size:], nil
 
-	case DataTypeBitmap64, DataTypeUint64:
+	case DataTypeBitmap64:
 		value := binary.LittleEndian.Uint64(data)
+		return value, data[8:], nil
+
+	case DataTypeUint8:
+		value := uint8(data[0])
+		if value == 0xff {
+			return nil, data[1:], nil
+		}
+		return value, data[1:], nil
+
+	case DataTypeUint16:
+		value := binary.LittleEndian.Uint16(data)
+		if value == 0xffff {
+			return nil, data[2:], nil
+		}
+		return value, data[2:], nil
+
+	case DataTypeUint24:
+		var buffer [4]byte
+		copy(buffer[:], data[:3])
+		value := binary.LittleEndian.Uint32(buffer[:])
+		if value == 0xffffff {
+			return nil, data[3:], nil
+		}
+		return value, data[3:], nil
+
+	case DataTypeUint32:
+		value := binary.LittleEndian.Uint32(data)
+		if value == 0xffff_ffff {
+			return nil, data[4:], nil
+		}
+		return value, data[4:], nil
+
+	case DataTypeUint40, DataTypeUint48, DataTypeUint56:
+		invalid := true
+		for i := 0; i < size; i++ {
+			if data[i] != 0xff {
+				invalid = false
+				break
+			}
+		}
+		if invalid {
+			return nil, data[size:], nil
+		}
+		var buffer [8]byte
+		copy(buffer[:], data[:size])
+		value := binary.LittleEndian.Uint64(buffer[:])
+		return value, data[size:], nil
+
+	case DataTypeUint64:
+		value := binary.LittleEndian.Uint64(data)
+		if value == 0xffff_ffff_ffff_ffff {
+			return nil, data[8:], nil
+		}
 		return value, data[8:], nil
 
 	case DataTypeInt8:
 		value := int8(data[0])
+		if uint8(value) == 0x80 {
+			return nil, data[1:], nil
+		}
 		return value, data[1:], nil
 
 	case DataTypeInt16:
 		value := int16(binary.LittleEndian.Uint16(data))
+		if uint16(value) == 0x8000 {
+			return nil, data[2:], nil
+		}
 		return value, data[2:], nil
 
 	case DataTypeInt24:
 		var buffer [4]byte
-		copy(buffer, data[:3])
+		copy(buffer[:], data[:3])
 		extendSign(buffer[:], 3, 4)
 		value := int32(binary.LittleEndian.Uint32(buffer[:]))
+		if uint32(value) == 0xff800000 {
+			return nil, data[3:], nil
+		}
 		return value, data[3:], nil
 
 	case DataTypeInt32:
 		value := int32(binary.LittleEndian.Uint32(data))
+		if uint32(value) == 0x8000_0000 {
+			return nil, data[4:], nil
+		}
 		return value, data[4:], nil
 
 	case DataTypeInt40, DataTypeInt48, DataTypeInt56:
+		invalid := true
+		for i := 0; i < size-1; i++ {
+			if data[i] != 0x00 {
+				invalid = false
+				break
+			}
+		}
+		if invalid && data[size-1] == 0x80 {
+			return nil, data[size:], nil
+		}
 		var buffer [8]byte
-		copy(buffer, data[:size])
+		copy(buffer[:], data[:size])
 		extendSign(buffer[:], size, 8)
 		value := int64(binary.LittleEndian.Uint64(buffer[:]))
 		return value, data[size:], nil
 
 	case DataTypeInt64:
 		value := int64(binary.LittleEndian.Uint64(data))
+		if uint64(value) == 0x8000_0000_0000_0000 {
+			return nil, data[8:], nil
+		}
 		return value, data[8:], nil
 
 	case DataTypeEnum8, DataTypeEnum16:
@@ -391,11 +464,17 @@ func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
 	case DataTypeFloat32:
 		bits := binary.LittleEndian.Uint32(data)
 		value := math.Float32frombits(bits)
+		if math.IsNaN(float64(value)) {
+			return nil, data[4:], nil
+		}
 		return value, data[4:], nil
 
 	case DataTypeFloat64:
 		bits := binary.LittleEndian.Uint64(data)
 		value := math.Float64frombits(bits)
+		if math.IsNaN(value) {
+			return nil, data[8:], nil
+		}
 		return value, data[8:], nil
 
 	case DataTypeOctetString:
@@ -407,7 +486,7 @@ func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
 		}
 		length := uint8(data[0])
 		if length == 0xff {
-			return InvalidValue, data[1:], nil
+			return nil, data[1:], nil
 		}
 		if len(data) < int(length)+1 {
 			return nil, data, ErrNotEnoughData
@@ -424,7 +503,7 @@ func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
 		}
 		length := binary.LittleEndian.Uint16(data)
 		if length == 0xffff {
-			return InvalidValue, data[2:], nil
+			return nil, data[2:], nil
 		}
 		if len(data) < int(length)+2 {
 			return nil, data, ErrNotEnoughData
