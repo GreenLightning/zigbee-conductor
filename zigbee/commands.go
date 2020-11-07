@@ -135,6 +135,36 @@ type AfRegisterResponse struct {
 }
 
 func init() {
+	registerCommand(FRAME_TYPE_SREQ, FRAME_SUBSYSTEM_AF, 0x01, AfDataRequest{})
+	registerCommand(FRAME_TYPE_SRSP, FRAME_SUBSYSTEM_AF, 0x01, AfDataResponse{})
+}
+
+type AfDataRequest struct {
+	DstAddr        uint16
+	DstEndpoint    uint8
+	SrcEndpoint    uint8
+	ClusterID      uint16
+	TransSeqNumber uint8
+	Options        uint8
+	Radius         uint8
+	Data           []byte
+}
+
+type AfDataResponse struct {
+	Status byte
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_AF, 0x80, AfDataConfirm{})
+}
+
+type AfDataConfirm struct {
+	Status         byte
+	Endpoint       uint8
+	TransSeqNumber uint8
+}
+
+func init() {
 	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_AF, 0x81, AfIncomingMsg{})
 }
 

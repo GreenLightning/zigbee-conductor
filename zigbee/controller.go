@@ -169,3 +169,11 @@ func (c *Controller) Close() error {
 func (c *Controller) RegisterPermanentHandler(commandPrototype interface{}) *Handler {
 	return c.port.RegisterPermanentHandler(commandPrototype)
 }
+
+func (c *Controller) WriteCommand(command interface{}) (interface{}, error) {
+	return c.port.WriteCommand(command)
+}
+
+func (c *Controller) WriteCommandTimeout(command interface{}, timeout time.Duration) (interface{}, error) {
+	return c.port.WriteCommandTimeout(command, timeout)
+}

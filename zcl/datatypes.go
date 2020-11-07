@@ -7,6 +7,10 @@ import (
 	"math"
 )
 
+var ErrNotEnoughData = errors.New("not enough data")
+var ErrInvalidData = errors.New("invalid data")
+var ErrNotImplemented = errors.New("not implemented")
+
 type DataType byte
 
 const (
@@ -288,10 +292,6 @@ func (typ DataType) SizeInBytes() int {
 		return SizeInvalid
 	}
 }
-
-var ErrNotEnoughData = errors.New("not enough data")
-var ErrInvalidData = errors.New("invalid data")
-var ErrNotImplemented = errors.New("not implemented")
 
 func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
 	size := typ.SizeInBytes()
