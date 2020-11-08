@@ -32,7 +32,7 @@ func main() {
 		cmd, err := handler.Receive()
 		check(err)
 		msg := cmd.(zigbee.AfIncomingMsg)
-		frame, err := zcl.ParseFrame(msg.ClusterID, msg.Data)
+		frame, err := zcl.ParseFrame(msg.Data)
 		if err != nil {
 			fmt.Println(err)
 			continue

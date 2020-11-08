@@ -36,15 +36,12 @@ type FrameHeader struct {
 }
 
 type Frame struct {
-	ClusterID ClusterID
 	FrameHeader
 	Data []byte
 }
 
-func ParseFrame(clusterID uint16, data []byte) (Frame, error) {
+func ParseFrame(data []byte) (Frame, error) {
 	var frame Frame
-
-	frame.ClusterID = ClusterID(clusterID)
 
 	if len(data) < 1 {
 		return frame, errors.New("no data")
