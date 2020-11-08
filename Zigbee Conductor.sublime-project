@@ -45,10 +45,10 @@
 		{
 			"name": "Package and Upload (GreenHQ)",
 			"working_dir": "$project_path",
-			"shell_cmd": "env GOOS=linux GOARCH=arm go build && rsync -rtv zigbee-conductor greenhq.local: || exit 0",
+			"shell_cmd": "env GOOS=linux GOARCH=arm go build && rsync -rtv -e 'ssh -q' zigbee-conductor greenhq.local: || exit 0",
 			"file_regex": "^(.+?):(\\d+?):(\\d+)?: (.+)$",
 			"windows": {
-				"shell_cmd": "cmd /C \"set GOOS=linux&set GOARCH=arm&go build\" && bash -c \"rsync -rtv zigbee-conductor greenhq.local:\" || exit /b 0"
+				"shell_cmd": "cmd /C \"set GOOS=linux&set GOARCH=arm&go build\" && bash -c \"rsync -rtv -e 'ssh -q' zigbee-conductor greenhq.local:\" || exit /b 0"
 			}
 		}
 	]
