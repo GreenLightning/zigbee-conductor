@@ -38,8 +38,8 @@ func main() {
 			continue
 		}
 		fmt.Printf("<--- %T%+v\n", frame, frame)
-		if frame.Type == zcl.FRAME_TYPE_GLOBAL && !frame.ManufacturerSpecific {
-			if frame.CommandIdentifier == zcl.COMMAND_ID_REPORT_ATTRIBUTES {
+		if frame.Type == zcl.FrameTypeGlobal && !frame.ManufacturerSpecific {
+			if frame.CommandID == zcl.CommandReportAttributes {
 				cmd2, err := zcl.ParseReportAttributesCommand(frame.Data)
 				if err != nil {
 					fmt.Println(err)
@@ -48,7 +48,7 @@ func main() {
 				for _, report := range cmd2.Reports {
 					fmt.Printf("<---- %T%+v\n", report, report)
 				}
-			} else if frame.CommandIdentifier == zcl.COMMAND_ID_READ_REPORTING_CONFIGURATION_RESPONSE {
+			} else if frame.CommandID == zcl.CommandReadReportingConfigurationResponse {
 				cmd2, err := zcl.ParseReadReportingConfigurationResponseCommand(frame.Data)
 				if err != nil {
 					fmt.Println(err)

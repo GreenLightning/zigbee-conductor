@@ -9,15 +9,15 @@ import (
 type FrameType byte
 
 const (
-	FRAME_TYPE_GLOBAL FrameType = 0b00
-	FRAME_TYPE_LOCAL  FrameType = 0b01
+	FrameTypeGlobal FrameType = 0b00
+	FrameTypeLocal  FrameType = 0b01
 )
 
 func (t FrameType) String() string {
 	switch t {
-	case FRAME_TYPE_GLOBAL:
+	case FrameTypeGlobal:
 		return "Global"
-	case FRAME_TYPE_LOCAL:
+	case FrameTypeLocal:
 		return "Local"
 	default:
 		return fmt.Sprintf("Reserved(%d)", byte(t))
@@ -30,9 +30,9 @@ type FrameHeader struct {
 	DirectionServerToClient bool
 	DisableDefaultResponse  bool
 
-	ManufacturerCode          uint16
-	TransactionSequenceNumber uint8
-	CommandIdentifier         uint8
+	ManufacturerCode uint16
+	TransSeqNumber   uint8
+	CommandID        CommandID
 }
 
 type Frame struct {
@@ -66,8 +66,8 @@ func ParseFrame(data []byte) (Frame, error) {
 		return frame, errors.New("not enough data")
 	}
 
-	frame.TransactionSequenceNumber = data[0]
-	frame.CommandIdentifier = data[1]
+	frame.TransSeqNumber = data[0]
+	frame.CommandID = CommandID(data[1])
 	data = data[2:]
 
 	frame.Data = data
@@ -101,8 +101,8 @@ func SerializeFrame(frame Frame) []byte {
 		binary.LittleEndian.PutUint16(data[start:], frame.ManufacturerCode)
 	}
 
-	data = append(data, frame.TransactionSequenceNumber)
-	data = append(data, frame.CommandIdentifier)
+	data = append(data, frame.TransSeqNumber)
+	data = append(data, byte(frame.CommandID))
 
 	data = append(data, frame.Data...)
 	return data

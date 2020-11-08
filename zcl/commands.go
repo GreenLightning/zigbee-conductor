@@ -5,31 +5,86 @@ import (
 	"fmt"
 )
 
+type CommandID byte
+
 const (
-	COMMAND_ID_READ_ATTRIBUTES                       = 0x00
-	COMMAND_ID_READ_ATTRIBUTES_RESPONSE              = 0x01
-	COMMAND_ID_WRITE_ATTRIBUTES                      = 0x02
-	COMMAND_ID_WRITE_ATTRIBUTES_UNDIVIDED            = 0x03
-	COMMAND_ID_WRITE_ATTRIBUTES_RESPONSE             = 0x04
-	COMMAND_ID_WRITE_ATTRIBUTES_NO_RESPONSE          = 0x05
-	COMMAND_ID_CONFIGURE_REPORTING                   = 0x06
-	COMMAND_ID_CONFIGURE_REPORTING_RESPONSE          = 0x07
-	COMMAND_ID_READ_REPORTING_CONFIGURATION          = 0x08
-	COMMAND_ID_READ_REPORTING_CONFIGURATION_RESPONSE = 0x09
-	COMMAND_ID_REPORT_ATTRIBUTES                     = 0x0a
-	COMMAND_ID_DEFAULT_RESPONSE                      = 0x0b
-	COMMAND_ID_DISCOVER_ATTRIBUTES                   = 0x0c
-	COMMAND_ID_DISCOVER_ATTRIBUTES_RESPONSE          = 0x0d
-	COMMAND_ID_READ_ATTRIBUTES_STRUCTURED            = 0x0e
-	COMMAND_ID_WRITE_ATTRIBUTES_STRUCTURED           = 0x0f
-	COMMAND_ID_WRITE_ATTRIBUTES_STRUCTURED_RESPONSE  = 0x10
-	COMMAND_ID_DISCOVER_COMMANDS_RECEIVED            = 0x11
-	COMMAND_ID_DISCOVER_COMMANDS_RECEIVED_RESPONSE   = 0x12
-	COMMAND_ID_DISCOVER_COMMANDS_GENERATED           = 0x13
-	COMMAND_ID_DISCOVER_COMMANDS_GENERATED_RESPONSE  = 0x14
-	COMMAND_ID_DISCOVER_ATTRIBUTES_EXTENDED          = 0x15
-	COMMAND_ID_DISCOVER_ATTRIBUTES_EXTENDED_RESPONSE = 0x16
+	CommandReadAttributes                     CommandID = 0x00
+	CommandReadAttributesResponse             CommandID = 0x01
+	CommandWriteAttributes                    CommandID = 0x02
+	CommandWriteAttributesUndivided           CommandID = 0x03
+	CommandWriteAttributesResponse            CommandID = 0x04
+	CommandWriteAttributesNoResponse          CommandID = 0x05
+	CommandConfigureReporting                 CommandID = 0x06
+	CommandConfigureReportingResponse         CommandID = 0x07
+	CommandReadReportingConfiguration         CommandID = 0x08
+	CommandReadReportingConfigurationResponse CommandID = 0x09
+	CommandReportAttributes                   CommandID = 0x0a
+	CommandDefaultResponse                    CommandID = 0x0b
+	CommandDiscoverAttributes                 CommandID = 0x0c
+	CommandDiscoverAttributesResponse         CommandID = 0x0d
+	CommandReadAttributesStructured           CommandID = 0x0e
+	CommandWriteAttributesStructured          CommandID = 0x0f
+	CommandWriteAttributesStructuredResponse  CommandID = 0x10
+	CommandDiscoverCommandsReceived           CommandID = 0x11
+	CommandDiscoverCommandsReceivedResponse   CommandID = 0x12
+	CommandDiscoverCommandsGenerated          CommandID = 0x13
+	CommandDiscoverCommandsGeneratedResponse  CommandID = 0x14
+	CommandDiscoverAttributesExtended         CommandID = 0x15
+	CommandDiscoverAttributesExtendedResponse CommandID = 0x16
 )
+
+func (id CommandID) String() string {
+	switch id {
+	case CommandReadAttributes:
+		return "ReadAttributes"
+	case CommandReadAttributesResponse:
+		return "ReadAttributesResponse"
+	case CommandWriteAttributes:
+		return "WriteAttributes"
+	case CommandWriteAttributesUndivided:
+		return "WriteAttributesUndivided"
+	case CommandWriteAttributesResponse:
+		return "WriteAttributesResponse"
+	case CommandWriteAttributesNoResponse:
+		return "WriteAttributesNoResponse"
+	case CommandConfigureReporting:
+		return "ConfigureReporting"
+	case CommandConfigureReportingResponse:
+		return "ConfigureReportingResponse"
+	case CommandReadReportingConfiguration:
+		return "ReadReportingConfiguration"
+	case CommandReadReportingConfigurationResponse:
+		return "ReadReportingConfigurationResponse"
+	case CommandReportAttributes:
+		return "ReportAttributes"
+	case CommandDefaultResponse:
+		return "DefaultResponse"
+	case CommandDiscoverAttributes:
+		return "DiscoverAttributes"
+	case CommandDiscoverAttributesResponse:
+		return "DiscoverAttributesResponse"
+	case CommandReadAttributesStructured:
+		return "ReadAttributesStructured"
+	case CommandWriteAttributesStructured:
+		return "WriteAttributesStructured"
+	case CommandWriteAttributesStructuredResponse:
+		return "WriteAttributesStructuredResponse"
+	case CommandDiscoverCommandsReceived:
+		return "DiscoverCommandsReceived"
+	case CommandDiscoverCommandsReceivedResponse:
+		return "DiscoverCommandsReceivedResponse"
+	case CommandDiscoverCommandsGenerated:
+		return "DiscoverCommandsGenerated"
+	case CommandDiscoverCommandsGeneratedResponse:
+		return "DiscoverCommandsGeneratedResponse"
+	case CommandDiscoverAttributesExtended:
+		return "DiscoverAttributesExtended"
+	case CommandDiscoverAttributesExtendedResponse:
+		return "DiscoverAttributesExtendedResponse"
+	default:
+		return fmt.Sprintf("CommandID(0x%02x)", byte(id))
+	}
+}
 
 type Status byte
 
