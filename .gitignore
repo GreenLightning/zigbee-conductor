@@ -1,5 +1,6 @@
 /zigbee-conductor
 /zigbee-conductor.exe
 
+*.sublime-project
 *.sublime-workspace
 .DS_Store
