@@ -1,4 +1,4 @@
-package zigbee
+package znp
 
 import (
 	"errors"
