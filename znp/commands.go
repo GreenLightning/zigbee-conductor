@@ -143,7 +143,7 @@ type AfDataRequest struct {
 	DstAddr        uint16
 	DstEndpoint    uint8
 	SrcEndpoint    uint8
-	ClusterID      ClusterID
+	ClusterID      uint16
 	TransSeqNumber uint8
 	Options        uint8
 	Radius         uint8
@@ -170,7 +170,7 @@ func init() {
 
 type AfIncomingMsg struct {
 	GroupID        uint16
-	ClusterID      ClusterID
+	ClusterID      uint16
 	SrcAddr        uint16
 	SrcEndpoint    uint8
 	DstEndpoint    uint8
