@@ -1,6 +1,7 @@
 package conbee
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -9,6 +10,10 @@ import (
 
 type ParsableCommand interface {
 	ParsePayload(data []byte) error
+}
+
+type SerializableCommand interface {
+	SerializePayload(buffer *bytes.Buffer) error
 }
 
 type ParsableMap map[CommandID]reflect.Type
@@ -29,15 +34,15 @@ func registerParsable(pm ParsableMap, id CommandID, prototype ParsableCommand) {
 	pm[id] = commandType.Elem()
 }
 
-func makeParsable(incoming bool, id CommandID) (reflect.Value, bool) {
+func makeParsable(incoming bool, id CommandID) ParsableCommand {
 	pm := incomingParsables
 	if !incoming {
 		pm = outgoingParsables
 	}
 	if parsableType, ok := pm[id]; ok {
-		return reflect.New(parsableType), true
+		return reflect.New(parsableType).Interface().(ParsableCommand)
 	}
-	return reflect.Value{}, false
+	return nil
 }
 
 type Frame struct {
@@ -80,9 +85,9 @@ func ParseFrame(data []byte, incoming bool) (frame Frame, err error) {
 		return
 	}
 
-	if value, ok := makeParsable(incoming, frame.CommandID); ok {
-		err = value.Interface().(ParsableCommand).ParsePayload(payload)
-		frame.Command = value.Elem().Interface()
+	if value := makeParsable(incoming, frame.CommandID); value != nil {
+		frame.Command = value
+		err = value.ParsePayload(payload)
 		if err != nil {
 			return
 		}
@@ -91,6 +96,56 @@ func ParseFrame(data []byte, incoming bool) (frame Frame, err error) {
 	}
 
 	return
+}
+
+func SerializeFrame(frame Frame) ([]byte, error) {
+	var buffer bytes.Buffer
+	buffer.Grow(32)
+
+	buffer.WriteByte(byte(frame.CommandID))
+	buffer.WriteByte(byte(frame.SequenceNumber))
+	buffer.WriteByte(byte(frame.Status))
+
+	// Placeholder for frame length.
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+
+	if command, ok := frame.Command.(SerializableCommand); ok {
+		err := command.SerializePayload(&buffer)
+		if err != nil {
+			return nil, err
+		}
+	} else if command, ok := frame.Command.([]byte); ok {
+		buffer.Write(command)
+	} else {
+		return nil, fmt.Errorf("cannot serialize command: %T", frame.Command)
+	}
+
+	frameLength := uint16(buffer.Len())
+	binary.LittleEndian.PutUint16(buffer.Bytes()[3:5], frameLength)
+
+	crc := computeCRC(buffer.Bytes())
+	WriteUint16(&buffer, crc)
+
+	return buffer.Bytes(), nil
+}
+
+func BeginPayload(buffer *bytes.Buffer) int {
+	position := buffer.Len()
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	return position
+}
+
+func EndPayload(buffer *bytes.Buffer, pos int) {
+	length := buffer.Len() - pos - 2
+	binary.LittleEndian.PutUint16(buffer.Bytes()[pos:], uint16(length))
+}
+
+func WriteUint16(buffer *bytes.Buffer, value uint16) {
+	var data [2]byte
+	binary.LittleEndian.PutUint16(data[:], value)
+	buffer.Write(data[:])
 }
 
 func computeCRC(data []byte) (crc uint16) {

@@ -73,7 +73,7 @@ func (p *Parser) Flush() {
 			continue
 		}
 
-		fmt.Printf("%s %s %+v\n", p.Timestamp, p.Dir, frame)
+		fmt.Printf("%s %s %+v %T%+v\n", p.Timestamp, p.Dir, frame, frame.Command, frame.Command)
 	}
 
 	p.Timestamp = ""

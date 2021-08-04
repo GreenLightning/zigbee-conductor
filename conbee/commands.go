@@ -1,6 +1,7 @@
 package conbee
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -68,6 +69,13 @@ func (r *ReadFirmwareVersionRequest) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *ReadFirmwareVersionRequest) SerializePayload(buffer *bytes.Buffer) error {
+	var data [4]byte
+	binary.LittleEndian.PutUint32(data[:], r.Reserved)
+	buffer.Write(data[:])
+	return nil
+}
+
 type ReadFirmwareVersionResponse struct {
 	Version VersionNumber
 }
@@ -81,6 +89,13 @@ func (r *ReadFirmwareVersionResponse) ParsePayload(data []byte) error {
 		return ErrInvalidPacket
 	}
 	r.Version = VersionNumber(binary.LittleEndian.Uint32(data))
+	return nil
+}
+
+func (r *ReadFirmwareVersionResponse) SerializePayload(buffer *bytes.Buffer) error {
+	var data [4]byte
+	binary.LittleEndian.PutUint32(data[:], uint32(r.Version))
+	buffer.Write(data[:])
 	return nil
 }
 
@@ -100,6 +115,13 @@ func (r *ReadParameterRequest) ParsePayload(data []byte) error {
 		return err
 	}
 	r.ParameterID = NetParam(data[0])
+	return nil
+}
+
+func (r *ReadParameterRequest) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+	buffer.WriteByte(byte(r.ParameterID))
+	EndPayload(buffer, payload)
 	return nil
 }
 
@@ -125,6 +147,14 @@ func (r *ReadParameterResponse) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *ReadParameterResponse) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+	buffer.WriteByte(byte(r.ParameterID))
+	buffer.Write(r.Parameter)
+	EndPayload(buffer, payload)
+	return nil
+}
+
 // WRITE PARAMETER
 
 type WriteParameterRequest struct {
@@ -146,6 +176,14 @@ func (r *WriteParameterRequest) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *WriteParameterRequest) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+	buffer.WriteByte(byte(r.ParameterID))
+	buffer.Write(r.Parameter)
+	EndPayload(buffer, payload)
+	return nil
+}
+
 type WriteParameterResponse struct {
 	ParameterID NetParam
 }
@@ -163,6 +201,13 @@ func (r *WriteParameterResponse) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *WriteParameterResponse) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+	buffer.WriteByte(byte(r.ParameterID))
+	EndPayload(buffer, payload)
+	return nil
+}
+
 // DEVICE STATE
 
 type DeviceStateRequest struct{}
@@ -172,6 +217,13 @@ func init() {
 }
 
 func (r *DeviceStateRequest) ParsePayload(data []byte) error {
+	return nil
+}
+
+func (r *DeviceStateRequest) SerializePayload(buffer *bytes.Buffer) error {
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
 	return nil
 }
 
@@ -188,6 +240,12 @@ func (r *DeviceStateResponse) ParsePayload(data []byte) error {
 		return ErrInvalidPacket
 	}
 	r.State = DeviceState(data[0])
+	return nil
+}
+
+func (r *DeviceStateResponse) SerializePayload(buffer *bytes.Buffer) error {
+	buffer.WriteByte(byte(r.State))
+	buffer.WriteByte(0)
 	return nil
 }
 
@@ -209,6 +267,12 @@ func (r *ReceivedDataNotification) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *ReceivedDataNotification) SerializePayload(buffer *bytes.Buffer) error {
+	buffer.WriteByte(byte(r.State))
+	buffer.WriteByte(0)
+	return nil
+}
+
 type ReadReceivedDataRequest struct {
 	Flags byte
 }
@@ -225,6 +289,13 @@ func (r *ReadReceivedDataRequest) ParsePayload(data []byte) error {
 	if len(data) != 0 {
 		r.Flags = data[0]
 	}
+	return nil
+}
+
+func (r *ReadReceivedDataRequest) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+	buffer.WriteByte(byte(r.Flags))
+	EndPayload(buffer, payload)
 	return nil
 }
 
@@ -298,6 +369,39 @@ func (r *ReadReceivedDataResponse) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *ReadReceivedDataResponse) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+
+	buffer.WriteByte(byte(r.State))
+	if err := writeAddress(buffer, r.Destination); err != nil {
+		return err
+	}
+	buffer.WriteByte(r.DestinationEndpoint)
+	if err := writeAddress(buffer, r.Source); err != nil {
+		return err
+	}
+	buffer.WriteByte(r.SourceEndpoint)
+
+	WriteUint16(buffer, r.ProfileID)
+	WriteUint16(buffer, r.ClusterID)
+
+	apsPayload := BeginPayload(buffer)
+	buffer.Write(r.Payload)
+	EndPayload(buffer, apsPayload)
+
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	buffer.WriteByte(byte(r.LQI))
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	buffer.WriteByte(byte(r.RSSI))
+
+	EndPayload(buffer, payload)
+	return nil
+}
+
 type MACPollIndication struct {
 	Source Address
 
@@ -306,9 +410,6 @@ type MACPollIndication struct {
 
 	// RSSI is the Received Signal Strength Indication.
 	RSSI int8
-
-	LifeTime      *uint32
-	DeviceTimeout *uint32
 }
 
 func init() {
@@ -332,20 +433,17 @@ func (r *MACPollIndication) ParsePayload(data []byte) error {
 	r.LQI = data[0]
 	r.RSSI = int8(data[1])
 	data = data[2:]
+	return nil
+}
 
-	if len(data) < 4 {
-		return nil
+func (r *MACPollIndication) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+	if err := writeAddress(buffer, r.Source); err != nil {
+		return err
 	}
-	lifeTime := binary.LittleEndian.Uint32(data)
-	r.LifeTime = &lifeTime
-	data = data[4:]
-
-	if len(data) < 4 {
-		return nil
-	}
-	timeout := binary.LittleEndian.Uint32(data)
-	r.DeviceTimeout = &timeout
-	data = data[4:]
+	buffer.WriteByte(byte(r.LQI))
+	buffer.WriteByte(byte(r.RSSI))
+	EndPayload(buffer, payload)
 	return nil
 }
 
@@ -419,6 +517,35 @@ func (r *EnqueueSendDataRequest) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *EnqueueSendDataRequest) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+
+	buffer.WriteByte(r.RequestID)
+	buffer.WriteByte(r.Flags)
+
+	if err := writeAddress(buffer, r.Destination); err != nil {
+		return err
+	}
+
+	if r.Destination.Mode != AddressModeGroup {
+		buffer.WriteByte(r.DestinationEndpoint)
+	}
+
+	WriteUint16(buffer, r.ProfileID)
+	WriteUint16(buffer, r.ClusterID)
+	buffer.WriteByte(r.SourceEndpoint)
+
+	apsPayload := BeginPayload(buffer)
+	buffer.Write(r.Payload)
+	EndPayload(buffer, apsPayload)
+
+	buffer.WriteByte(r.TxOptions)
+	buffer.WriteByte(r.Radius)
+
+	EndPayload(buffer, payload)
+	return nil
+}
+
 type EnqueueSendDataResponse struct {
 	State     DeviceState
 	RequestID byte
@@ -438,6 +565,14 @@ func (r *EnqueueSendDataResponse) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *EnqueueSendDataResponse) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+	buffer.WriteByte(byte(r.State))
+	buffer.WriteByte(byte(r.RequestID))
+	EndPayload(buffer, payload)
+	return nil
+}
+
 type QuerySendDataRequest struct{}
 
 func init() {
@@ -445,6 +580,12 @@ func init() {
 }
 
 func (r *QuerySendDataRequest) ParsePayload(data []byte) error {
+	return nil
+}
+
+func (r *QuerySendDataRequest) SerializePayload(buffer *bytes.Buffer) error {
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
 	return nil
 }
 
@@ -499,8 +640,35 @@ func (r *QuerySendDataResponse) ParsePayload(data []byte) error {
 	return nil
 }
 
+func (r *QuerySendDataResponse) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+
+	buffer.WriteByte(byte(r.State))
+	buffer.WriteByte(byte(r.RequestID))
+
+	if err := writeAddress(buffer, r.Destination); err != nil {
+		return err
+	}
+
+	if r.Destination.Mode != AddressModeGroup {
+		buffer.WriteByte(r.DestinationEndpoint)
+	}
+
+	buffer.WriteByte(r.SourceEndpoint)
+	buffer.WriteByte(r.ConfirmStatus)
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+	buffer.WriteByte(0)
+
+	EndPayload(buffer, payload)
+	return nil
+}
+
 // UPDATE NEIGHBOR
 
+// UpdateNeighborCommand is experimental and not officially documented.
+// See: https://github.com/dresden-elektronik/deconz-rest-plugin/issues/665#issuecomment-401341502
 type UpdateNeighborCommand struct {
 	Action       byte
 	ShortAddress uint16
@@ -520,6 +688,20 @@ func (c *UpdateNeighborCommand) ParsePayload(data []byte) error {
 	c.Action = data[0]
 	c.ShortAddress = binary.LittleEndian.Uint16(data[1:3])
 	c.MACAddress = MACAddress(binary.LittleEndian.Uint64(data[3:11]))
+	return nil
+}
+
+func (c *UpdateNeighborCommand) SerializePayload(buffer *bytes.Buffer) error {
+	payload := BeginPayload(buffer)
+
+	var data [12]byte
+	data[0] = c.Action
+	binary.LittleEndian.PutUint16(data[1:3], c.ShortAddress)
+	binary.LittleEndian.PutUint64(data[3:11], uint64(c.MACAddress))
+	data[11] = 0x80
+	buffer.Write(data[:])
+
+	EndPayload(buffer, payload)
 	return nil
 }
 
@@ -567,5 +749,31 @@ func extractAddress(data []byte) (Address, []byte, error) {
 
 	default:
 		return Address{}, data, ErrInvalidPacket
+	}
+}
+
+func writeAddress(buffer *bytes.Buffer, addr Address) error {
+	var data [11]byte
+	data[0] = byte(addr.Mode)
+
+	switch addr.Mode {
+	case AddressModeGroup, AddressModeNWK:
+		binary.LittleEndian.PutUint16(data[1:], addr.Short)
+		buffer.Write(data[:3])
+		return nil
+
+	case AddressModeIEEE:
+		binary.LittleEndian.PutUint64(data[1:], uint64(addr.Extended))
+		buffer.Write(data[:9])
+		return nil
+
+	case AddressModeCombined:
+		binary.LittleEndian.PutUint16(data[1:], addr.Short)
+		binary.LittleEndian.PutUint64(data[3:], uint64(addr.Extended))
+		buffer.Write(data[:11])
+		return nil
+
+	default:
+		return fmt.Errorf("invalid address mode: %v", addr.Mode)
 	}
 }
