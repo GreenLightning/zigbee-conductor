@@ -4,51 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	"github.com/GreenLightning/zigbee-conductor/zigbee"
 )
 
 type VersionNumber uint32
 
 func (v VersionNumber) String() string {
 	return fmt.Sprintf("0x%08x", uint32(v))
-}
-
-type MACAddress uint64
-
-func (a MACAddress) String() string {
-	return fmt.Sprintf("%016x", uint64(a))
-}
-
-type AddressMode byte
-
-const (
-	AddressModeNone     AddressMode = 0x00
-	AddressModeGroup    AddressMode = 0x01
-	AddressModeNWK      AddressMode = 0x02
-	AddressModeIEEE     AddressMode = 0x03
-	AddressModeCombined AddressMode = 0x04
-)
-
-func (m AddressMode) String() string {
-	switch m {
-	case AddressModeNone:
-		return "None"
-	case AddressModeGroup:
-		return "Group"
-	case AddressModeNWK:
-		return "NWK"
-	case AddressModeIEEE:
-		return "IEEE"
-	case AddressModeCombined:
-		return "Combined"
-	default:
-		return fmt.Sprintf("AddressMode(%d)", byte(m))
-	}
-}
-
-type Address struct {
-	Mode     AddressMode
-	Short    uint16
-	Extended MACAddress
 }
 
 // READ FIRMWARE VERSION
@@ -301,9 +264,9 @@ func (r *ReadReceivedDataRequest) SerializePayload(buffer *bytes.Buffer) error {
 
 type ReadReceivedDataResponse struct {
 	State               DeviceState
-	Destination         Address
+	Destination         zigbee.Address
 	DestinationEndpoint byte
-	Source              Address
+	Source              zigbee.Address
 	SourceEndpoint      byte
 	ProfileID           uint16
 	ClusterID           uint16
@@ -403,7 +366,7 @@ func (r *ReadReceivedDataResponse) SerializePayload(buffer *bytes.Buffer) error 
 }
 
 type MACPollIndication struct {
-	Source Address
+	Source zigbee.Address
 
 	// LQI is the Link Quality Indication.
 	LQI byte
@@ -454,7 +417,7 @@ type EnqueueSendDataRequest struct {
 	// Flags is not documented and should be set to 0.
 	// When reading and Flags is not zero, the destination address is not valid.
 	Flags               byte
-	Destination         Address
+	Destination         zigbee.Address
 	DestinationEndpoint byte
 	ProfileID           uint16
 	ClusterID           uint16
@@ -490,7 +453,7 @@ func (r *EnqueueSendDataRequest) ParsePayload(data []byte) error {
 		}
 	}
 
-	if r.Destination.Mode != AddressModeGroup {
+	if r.Destination.Mode != zigbee.AddressModeGroup {
 		if len(data) == 0 {
 			return ErrInvalidPacket
 		}
@@ -527,7 +490,7 @@ func (r *EnqueueSendDataRequest) SerializePayload(buffer *bytes.Buffer) error {
 		return err
 	}
 
-	if r.Destination.Mode != AddressModeGroup {
+	if r.Destination.Mode != zigbee.AddressModeGroup {
 		buffer.WriteByte(r.DestinationEndpoint)
 	}
 
@@ -592,7 +555,7 @@ func (r *QuerySendDataRequest) SerializePayload(buffer *bytes.Buffer) error {
 type QuerySendDataResponse struct {
 	State               DeviceState
 	RequestID           byte
-	Destination         Address
+	Destination         zigbee.Address
 	DestinationEndpoint byte
 	SourceEndpoint      byte
 	ConfirmStatus       byte
@@ -622,7 +585,7 @@ func (r *QuerySendDataResponse) ParsePayload(data []byte) error {
 		return err
 	}
 
-	if r.Destination.Mode != AddressModeGroup {
+	if r.Destination.Mode != zigbee.AddressModeGroup {
 		if len(data) == 0 {
 			return ErrInvalidPacket
 		}
@@ -650,7 +613,7 @@ func (r *QuerySendDataResponse) SerializePayload(buffer *bytes.Buffer) error {
 		return err
 	}
 
-	if r.Destination.Mode != AddressModeGroup {
+	if r.Destination.Mode != zigbee.AddressModeGroup {
 		buffer.WriteByte(r.DestinationEndpoint)
 	}
 
@@ -672,7 +635,7 @@ func (r *QuerySendDataResponse) SerializePayload(buffer *bytes.Buffer) error {
 type UpdateNeighborCommand struct {
 	Action       byte
 	ShortAddress uint16
-	MACAddress   MACAddress
+	MACAddress   zigbee.MACAddress
 }
 
 func init() {
@@ -687,7 +650,7 @@ func (c *UpdateNeighborCommand) ParsePayload(data []byte) error {
 	}
 	c.Action = data[0]
 	c.ShortAddress = binary.LittleEndian.Uint16(data[1:3])
-	c.MACAddress = MACAddress(binary.LittleEndian.Uint64(data[3:11]))
+	c.MACAddress = zigbee.MACAddress(binary.LittleEndian.Uint64(data[3:11]))
 	return nil
 }
 
@@ -718,56 +681,56 @@ func extractPayload(data []byte, minimumPayloadLength int) ([]byte, error) {
 	return data[2:], nil
 }
 
-func extractAddress(data []byte) (Address, []byte, error) {
+func extractAddress(data []byte) (zigbee.Address, []byte, error) {
 	if len(data) == 0 {
-		return Address{}, data, ErrInvalidPacket
+		return zigbee.Address{}, data, ErrInvalidPacket
 	}
-	var addr Address
-	addr.Mode = AddressMode(data[0])
+	var addr zigbee.Address
+	addr.Mode = zigbee.AddressMode(data[0])
 	switch addr.Mode {
-	case AddressModeGroup, AddressModeNWK:
+	case zigbee.AddressModeGroup, zigbee.AddressModeNWK:
 		if len(data) < 3 {
-			return Address{}, data, ErrInvalidPacket
+			return zigbee.Address{}, data, ErrInvalidPacket
 		}
 		addr.Short = binary.LittleEndian.Uint16(data[1:])
 		return addr, data[3:], nil
 
-	case AddressModeIEEE:
+	case zigbee.AddressModeIEEE:
 		if len(data) < 9 {
-			return Address{}, data, ErrInvalidPacket
+			return zigbee.Address{}, data, ErrInvalidPacket
 		}
-		addr.Extended = MACAddress(binary.LittleEndian.Uint64(data[1:]))
+		addr.Extended = zigbee.MACAddress(binary.LittleEndian.Uint64(data[1:]))
 		return addr, data[9:], nil
 
-	case AddressModeCombined:
+	case zigbee.AddressModeCombined:
 		if len(data) < 11 {
-			return Address{}, data, ErrInvalidPacket
+			return zigbee.Address{}, data, ErrInvalidPacket
 		}
 		addr.Short = binary.LittleEndian.Uint16(data[1:])
-		addr.Extended = MACAddress(binary.LittleEndian.Uint64(data[3:]))
+		addr.Extended = zigbee.MACAddress(binary.LittleEndian.Uint64(data[3:]))
 		return addr, data[11:], nil
 
 	default:
-		return Address{}, data, ErrInvalidPacket
+		return zigbee.Address{}, data, ErrInvalidPacket
 	}
 }
 
-func writeAddress(buffer *bytes.Buffer, addr Address) error {
+func writeAddress(buffer *bytes.Buffer, addr zigbee.Address) error {
 	var data [11]byte
 	data[0] = byte(addr.Mode)
 
 	switch addr.Mode {
-	case AddressModeGroup, AddressModeNWK:
+	case zigbee.AddressModeGroup, zigbee.AddressModeNWK:
 		binary.LittleEndian.PutUint16(data[1:], addr.Short)
 		buffer.Write(data[:3])
 		return nil
 
-	case AddressModeIEEE:
+	case zigbee.AddressModeIEEE:
 		binary.LittleEndian.PutUint64(data[1:], uint64(addr.Extended))
 		buffer.Write(data[:9])
 		return nil
 
-	case AddressModeCombined:
+	case zigbee.AddressModeCombined:
 		binary.LittleEndian.PutUint16(data[1:], addr.Short)
 		binary.LittleEndian.PutUint64(data[3:], uint64(addr.Extended))
 		buffer.Write(data[:11])
