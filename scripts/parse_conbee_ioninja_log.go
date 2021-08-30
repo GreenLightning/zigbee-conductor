@@ -11,6 +11,7 @@ import (
 
 	"github.com/GreenLightning/zigbee-conductor/conbee"
 	"github.com/GreenLightning/zigbee-conductor/pkg/slip"
+	"github.com/GreenLightning/zigbee-conductor/zcl"
 )
 
 type Parser struct {
@@ -73,7 +74,67 @@ func (p *Parser) Flush() {
 			continue
 		}
 
-		fmt.Printf("%s %s %+v %T%+v\n", p.Timestamp, p.Dir, frame, frame.Command, frame.Command)
+		spacer := strings.Repeat(" ", len(p.Timestamp))
+		fmt.Printf("%s %s %+v\n", p.Timestamp, p.Dir, frame)
+		fmt.Printf("%s %s   %T%+v\n", spacer, p.Dir, frame.Command, frame.Command)
+
+		var payload []byte
+		if request, ok := frame.Command.(*conbee.EnqueueSendDataRequest); ok {
+			payload = request.Payload
+		} else if response, ok := frame.Command.(*conbee.ReadReceivedDataResponse); ok {
+			payload = response.Payload
+		}
+
+		if payload != nil {
+			frame, err := zcl.ParseFrame(payload)
+			if err != nil {
+				continue
+			}
+
+			fmt.Printf("%s %s     %T%+v\n", spacer, p.Dir, frame, frame)
+			if frame.Type == zcl.FrameTypeGlobal && !frame.ManufacturerSpecific {
+				if frame.CommandID == zcl.CommandReadAttributes {
+					cmd2, err := zcl.ParseReadAttributesCommand(frame.Data)
+					if err != nil {
+						fmt.Printf("%s %s       %v\n", spacer, p.Dir, err)
+						continue
+					}
+					for _, attribute := range cmd2.Attributes {
+						fmt.Printf("%s %s       %v\n", spacer, p.Dir, attribute)
+					}
+
+				} else if frame.CommandID == zcl.CommandReadAttributesResponse {
+					cmd2, err := zcl.ParseReadAttributesResponseCommand(frame.Data)
+					if err != nil {
+						fmt.Printf("%s %s       %v\n", spacer, p.Dir, err)
+						continue
+					}
+					for _, record := range cmd2.Records {
+						fmt.Printf("%s %s       %T%+v\n", spacer, p.Dir, record, record)
+					}
+
+				} else if frame.CommandID == zcl.CommandReportAttributes {
+					cmd2, err := zcl.ParseReportAttributesCommand(frame.Data)
+					if err != nil {
+						fmt.Printf("%s %s       %v\n", spacer, p.Dir, err)
+						continue
+					}
+					for _, report := range cmd2.Reports {
+						fmt.Printf("%s %s       %T%+v\n", spacer, p.Dir, report, report)
+					}
+
+				} else if frame.CommandID == zcl.CommandReadReportingConfigurationResponse {
+					cmd2, err := zcl.ParseReadReportingConfigurationResponseCommand(frame.Data)
+					if err != nil {
+						fmt.Printf("%s %s       %v\n", spacer, p.Dir, err)
+						continue
+					}
+					for _, record := range cmd2.Records {
+						fmt.Printf("%s %s       %T%+v\n", spacer, p.Dir, record, record)
+					}
+				}
+			}
+		}
 	}
 
 	p.Timestamp = ""

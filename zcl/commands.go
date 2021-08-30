@@ -209,6 +209,79 @@ func (id AttributeID) String() string {
 	return fmt.Sprintf("0x%04x", uint16(id))
 }
 
+type ReadAttributesCommand struct {
+	Attributes []AttributeID
+}
+
+func ParseReadAttributesCommand(data []byte) (ReadAttributesCommand, error) {
+	var command ReadAttributesCommand
+	for len(data) != 0 {
+		if len(data) < 2 {
+			return command, ErrNotEnoughData
+		}
+		attribute := AttributeID(binary.LittleEndian.Uint16(data))
+		data = data[2:]
+		command.Attributes = append(command.Attributes, attribute)
+	}
+	return command, nil
+}
+
+type ReadAttributesResponseCommand struct {
+	Records []ReadAttributeStatusRecord
+}
+
+type ReadAttributeStatusRecord struct {
+	AttributeID AttributeID
+	Status      Status
+	DataType    DataType
+	Value       interface{}
+}
+
+func ParseReadAttributesResponseCommand(data []byte) (ReadAttributesResponseCommand, error) {
+	var command ReadAttributesResponseCommand
+	for len(data) != 0 {
+		var record ReadAttributeStatusRecord
+		var err error
+		record, data, err = ParseReadAttributeStatusRecord(data)
+		if err != nil {
+			return command, err
+		}
+		command.Records = append(command.Records, record)
+	}
+	return command, nil
+}
+
+func ParseReadAttributeStatusRecord(data []byte) (ReadAttributeStatusRecord, []byte, error) {
+	var record ReadAttributeStatusRecord
+
+	if len(data) < 3 {
+		return record, data, ErrNotEnoughData
+	}
+
+	record.AttributeID = AttributeID(binary.LittleEndian.Uint16(data))
+	data = data[2:]
+
+	record.Status = Status(data[0])
+	data = data[1:]
+
+	if record.Status == StatusSuccess {
+		if len(data) < 1 {
+			return record, data, ErrNotEnoughData
+		}
+
+		record.DataType = DataType(data[0])
+		data = data[1:]
+
+		var err error
+		record.Value, data, err = ParseValue(record.DataType, data)
+		if err != nil {
+			return record, data, err
+		}
+	}
+
+	return record, data, nil
+}
+
 type ReadReportingConfigurationCommand struct {
 	Records []AttributeRecord
 }
