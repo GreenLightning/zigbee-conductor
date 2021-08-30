@@ -12,7 +12,7 @@ type Controller interface {
 	io.Closer
 
 	Start() (chan IncomingMessage, error)
-	Send(msg OutgoingMessage) error
+	Send(message OutgoingMessage) error
 	PermitJoining(enabled bool) error
 }
 

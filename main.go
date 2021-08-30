@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/GreenLightning/zigbee-conductor/zcl"
+	"github.com/GreenLightning/zigbee-conductor/zigbee"
 	"github.com/GreenLightning/zigbee-conductor/znp"
 )
 
@@ -14,9 +15,8 @@ func main() {
 
 	flag.Parse()
 
-	controller, err := znp.NewController(znp.ControllerSettings{
+	controller, err := znp.NewController(zigbee.ControllerSettings{
 		Port:        *portFlag,
-		PermitJoin:  *permitJoinFlag,
 		LogCommands: true,
 		LogErrors:   true,
 	})
@@ -24,15 +24,13 @@ func main() {
 
 	defer controller.Close()
 
-	handler := controller.RegisterPermanentHandler(znp.AfIncomingMsg{})
+	incoming, err := controller.Start()
+	check(err)
 
-	check(controller.Start())
+	controller.PermitJoining(*permitJoinFlag)
 
-	for {
-		cmd, err := handler.Receive()
-		check(err)
-		msg := cmd.(znp.AfIncomingMsg)
-		frame, err := zcl.ParseFrame(msg.Data)
+	for message := range incoming {
+		frame, err := zcl.ParseFrame(message.Data)
 		if err != nil {
 			fmt.Println(err)
 			continue
