@@ -112,42 +112,15 @@ func (c *Controller) Start() (chan zigbee.IncomingMessage, error) {
 	}
 
 	// Activate endpoints to receive incoming messages.
-	{
-		handler := c.port.RegisterOneOffHandler(ZdoActiveEP{})
-		_, err = c.port.WriteCommand(ZdoActiveEPRequest{})
+	for _, endpoint := range endpoints {
+		_, err = c.port.WriteCommand(AfRegisterRequest{
+			Endpoint:    endpoint.Endpoint,
+			AppProfID:   endpoint.AppProfID,
+			AppDeviceID: 0x0005,
+			LatencyReq:  LatencyReqNoLatency,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("getting active endpoints: %w", err)
-		}
-
-		cmd, err := handler.Receive()
-		// Ignore timeout in case the firmware does not send the callback.
-		// It seems like some firmware maybe has this callback disabled
-		// and I do not know how to enable it.
-		if err != nil && err != ErrTimeout {
-			return nil, fmt.Errorf("waiting for active endpoints: %w", err)
-		}
-
-		activeEPs, _ := cmd.(ZdoActiveEP)
-		for _, endpoint := range endpoints {
-			found := false
-			for _, ep := range activeEPs.ActiveEPs {
-				if ep == endpoint.Endpoint {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				_, err = c.port.WriteCommand(AfRegisterRequest{
-					Endpoint:    endpoint.Endpoint,
-					AppProfID:   endpoint.AppProfID,
-					AppDeviceID: 0x0005,
-					LatencyReq:  LatencyReqNoLatency,
-				})
-				if err != nil {
-					return nil, fmt.Errorf("sending register endpoint: %w", err)
-				}
-			}
+			return nil, fmt.Errorf("sending register endpoint: %w", err)
 		}
 	}
 
