@@ -288,6 +288,16 @@ func init() {
 	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0xca, ZdoTcDevInd{})
 }
 
+// Informs the host device about the receipt of a source route to a given device.
+type ZdoSrcRtgInd struct {
+	DstAddr   uint16
+	RelayList []uint16
+}
+
+func init() {
+	registerCommand(FRAME_TYPE_AREQ, FRAME_SUBSYSTEM_ZDO, 0xc4, ZdoSrcRtgInd{})
+}
+
 // Trust Center Device Indication.
 type ZdoTcDevInd struct {
 	SrcNwkAddr    uint16
