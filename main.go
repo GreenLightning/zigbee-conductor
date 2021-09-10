@@ -37,7 +37,27 @@ func main() {
 		}
 		fmt.Printf("<--- %T%+v\n", frame, frame)
 		if frame.Type == zcl.FrameTypeGlobal && !frame.ManufacturerSpecific {
-			if frame.CommandID == zcl.CommandReportAttributes {
+			if frame.CommandID == zcl.CommandReadAttributes {
+				cmd2, err := zcl.ParseReadAttributesCommand(frame.Data)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				for _, attribute := range cmd2.Attributes {
+					fmt.Printf("<---- %v\n", attribute)
+				}
+
+			} else if frame.CommandID == zcl.CommandReadAttributesResponse {
+				cmd2, err := zcl.ParseReadAttributesResponseCommand(frame.Data)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				for _, record := range cmd2.Records {
+					fmt.Printf("<---- %T%+v\n", record, record)
+				}
+
+			} else if frame.CommandID == zcl.CommandReportAttributes {
 				cmd2, err := zcl.ParseReportAttributesCommand(frame.Data)
 				if err != nil {
 					fmt.Println(err)
@@ -46,6 +66,7 @@ func main() {
 				for _, report := range cmd2.Reports {
 					fmt.Printf("<---- %T%+v\n", report, report)
 				}
+
 			} else if frame.CommandID == zcl.CommandReadReportingConfigurationResponse {
 				cmd2, err := zcl.ParseReadReportingConfigurationResponseCommand(frame.Data)
 				if err != nil {
