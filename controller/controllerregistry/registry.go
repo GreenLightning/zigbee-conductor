@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/GreenLightning/zigbee-conductor/conbee"
+	"github.com/GreenLightning/zigbee-conductor/controller/conbee"
+	"github.com/GreenLightning/zigbee-conductor/controller/znp"
 	"github.com/GreenLightning/zigbee-conductor/zigbee"
-	"github.com/GreenLightning/zigbee-conductor/znp"
 )
 
 func init() {
