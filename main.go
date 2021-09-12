@@ -4,18 +4,19 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/GreenLightning/zigbee-conductor/controller/controllerregistry"
 	"github.com/GreenLightning/zigbee-conductor/zcl"
 	"github.com/GreenLightning/zigbee-conductor/zigbee"
-	"github.com/GreenLightning/zigbee-conductor/znp"
 )
 
 func main() {
 	portFlag := flag.String("port", "/dev/ttyACM0", "name of the serial port to use")
+	controllerFlag := flag.String("controller", "znp", "type of the controller: conbee, znp")
 	permitJoinFlag := flag.Bool("permitJoin", false, "permit devices to join the network")
 
 	flag.Parse()
 
-	controller, err := znp.NewController(zigbee.ControllerSettings{
+	controller, err := controllerregistry.NewController(*controllerFlag, zigbee.ControllerSettings{
 		Port:        *portFlag,
 		LogCommands: true,
 		LogErrors:   true,

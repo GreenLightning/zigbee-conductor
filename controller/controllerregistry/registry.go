@@ -4,10 +4,21 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/GreenLightning/zigbee-conductor/conbee"
 	"github.com/GreenLightning/zigbee-conductor/zigbee"
+	"github.com/GreenLightning/zigbee-conductor/znp"
 )
 
-type ControllerFactory func(settings zigbee.ControllerSettings) (zigbee.Controller, error)
+func init() {
+	Register("conbee", func(settings zigbee.ControllerSettings) (zigbee.Controller, error) {
+		return conbee.NewController(settings)
+	})
+	Register("znp", func(settings zigbee.ControllerSettings) (zigbee.Controller, error) {
+		return znp.NewController(settings)
+	})
+}
+
+type ControllerFactory = func(settings zigbee.ControllerSettings) (zigbee.Controller, error)
 
 var ErrNotFound = errors.New("controller not found")
 
