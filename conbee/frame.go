@@ -9,10 +9,12 @@ import (
 )
 
 type ParsableCommand interface {
+	CommandID() CommandID
 	ParsePayload(data []byte) error
 }
 
 type SerializableCommand interface {
+	CommandID() CommandID
 	SerializePayload(buffer *bytes.Buffer) error
 }
 
@@ -23,7 +25,8 @@ var (
 	outgoingParsables = make(ParsableMap)
 )
 
-func registerParsable(pm ParsableMap, id CommandID, prototype ParsableCommand) {
+func registerParsable(pm ParsableMap, prototype ParsableCommand) {
+	id := prototype.CommandID()
 	commandType := reflect.TypeOf(prototype)
 	if commandType.Kind() != reflect.Ptr || commandType.Elem().Kind() != reflect.Struct {
 		panic("command must be a pointer to a struct")
@@ -98,9 +101,20 @@ func ParseFrame(data []byte, incoming bool) (frame Frame, err error) {
 	return
 }
 
+// SerializeFrame converts a frame into a slice of bytes.
+//
+// The frame length is computed automatically and the corresponding field from
+// the frame object is ignored.
+//
+// The command can be a SerializableCommand or a slice of bytes. If the command
+// is a SerializableCommand the command ID is taken from the command.
 func SerializeFrame(frame Frame) ([]byte, error) {
 	var buffer bytes.Buffer
 	buffer.Grow(32)
+
+	if command, ok := frame.Command.(SerializableCommand); ok {
+		frame.CommandID = command.CommandID()
+	}
 
 	buffer.WriteByte(byte(frame.CommandID))
 	buffer.WriteByte(byte(frame.SequenceNumber))

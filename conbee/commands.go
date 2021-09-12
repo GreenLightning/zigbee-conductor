@@ -21,7 +21,11 @@ type ReadFirmwareVersionRequest struct {
 }
 
 func init() {
-	registerParsable(outgoingParsables, CmdVersion, new(ReadFirmwareVersionRequest))
+	registerParsable(outgoingParsables, new(ReadFirmwareVersionRequest))
+}
+
+func (r *ReadFirmwareVersionRequest) CommandID() CommandID {
+	return CmdVersion
 }
 
 func (r *ReadFirmwareVersionRequest) ParsePayload(data []byte) error {
@@ -44,7 +48,11 @@ type ReadFirmwareVersionResponse struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdVersion, new(ReadFirmwareVersionResponse))
+	registerParsable(incomingParsables, new(ReadFirmwareVersionResponse))
+}
+
+func (r *ReadFirmwareVersionResponse) CommandID() CommandID {
+	return CmdVersion
 }
 
 func (r *ReadFirmwareVersionResponse) ParsePayload(data []byte) error {
@@ -69,7 +77,11 @@ type ReadParameterRequest struct {
 }
 
 func init() {
-	registerParsable(outgoingParsables, CmdReadParameter, new(ReadParameterRequest))
+	registerParsable(outgoingParsables, new(ReadParameterRequest))
+}
+
+func (r *ReadParameterRequest) CommandID() CommandID {
+	return CmdReadParameter
 }
 
 func (r *ReadParameterRequest) ParsePayload(data []byte) error {
@@ -94,7 +106,11 @@ type ReadParameterResponse struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdReadParameter, new(ReadParameterResponse))
+	registerParsable(incomingParsables, new(ReadParameterResponse))
+}
+
+func (r *ReadParameterResponse) CommandID() CommandID {
+	return CmdReadParameter
 }
 
 func (r *ReadParameterResponse) ParsePayload(data []byte) error {
@@ -126,7 +142,11 @@ type WriteParameterRequest struct {
 }
 
 func init() {
-	registerParsable(outgoingParsables, CmdWriteParameter, new(WriteParameterRequest))
+	registerParsable(outgoingParsables, new(WriteParameterRequest))
+}
+
+func (r *WriteParameterRequest) CommandID() CommandID {
+	return CmdWriteParameter
 }
 
 func (r *WriteParameterRequest) ParsePayload(data []byte) error {
@@ -152,7 +172,11 @@ type WriteParameterResponse struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdWriteParameter, new(WriteParameterResponse))
+	registerParsable(incomingParsables, new(WriteParameterResponse))
+}
+
+func (r *WriteParameterResponse) CommandID() CommandID {
+	return CmdWriteParameter
 }
 
 func (r *WriteParameterResponse) ParsePayload(data []byte) error {
@@ -176,7 +200,11 @@ func (r *WriteParameterResponse) SerializePayload(buffer *bytes.Buffer) error {
 type DeviceStateRequest struct{}
 
 func init() {
-	registerParsable(outgoingParsables, CmdDeviceState, new(DeviceStateRequest))
+	registerParsable(outgoingParsables, new(DeviceStateRequest))
+}
+
+func (r *DeviceStateRequest) CommandID() CommandID {
+	return CmdDeviceState
 }
 
 func (r *DeviceStateRequest) ParsePayload(data []byte) error {
@@ -195,7 +223,11 @@ type DeviceStateResponse struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdDeviceState, new(DeviceStateResponse))
+	registerParsable(incomingParsables, new(DeviceStateResponse))
+}
+
+func (r *DeviceStateResponse) CommandID() CommandID {
+	return CmdDeviceState
 }
 
 func (r *DeviceStateResponse) ParsePayload(data []byte) error {
@@ -219,7 +251,11 @@ type ReceivedDataNotification struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdDeviceStateChanged, new(ReceivedDataNotification))
+	registerParsable(incomingParsables, new(ReceivedDataNotification))
+}
+
+func (r *ReceivedDataNotification) CommandID() CommandID {
+	return CmdDeviceStateChanged
 }
 
 func (r *ReceivedDataNotification) ParsePayload(data []byte) error {
@@ -241,7 +277,11 @@ type ReadReceivedDataRequest struct {
 }
 
 func init() {
-	registerParsable(outgoingParsables, CmdAPSDataIndication, new(ReadReceivedDataRequest))
+	registerParsable(outgoingParsables, new(ReadReceivedDataRequest))
+}
+
+func (r *ReadReceivedDataRequest) CommandID() CommandID {
+	return CmdAPSDataIndication
 }
 
 func (r *ReadReceivedDataRequest) ParsePayload(data []byte) error {
@@ -282,7 +322,11 @@ type ReadReceivedDataResponse struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdAPSDataIndication, new(ReadReceivedDataResponse))
+	registerParsable(incomingParsables, new(ReadReceivedDataResponse))
+}
+
+func (r *ReadReceivedDataResponse) CommandID() CommandID {
+	return CmdAPSDataIndication
 }
 
 func (r *ReadReceivedDataResponse) ParsePayload(data []byte) error {
@@ -376,7 +420,11 @@ type MACPollIndication struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdMACPollIndication, new(MACPollIndication))
+	registerParsable(incomingParsables, new(MACPollIndication))
+}
+
+func (r *MACPollIndication) CommandID() CommandID {
+	return CmdMACPollIndication
 }
 
 func (r *MACPollIndication) ParsePayload(data []byte) error {
@@ -428,7 +476,11 @@ type EnqueueSendDataRequest struct {
 }
 
 func init() {
-	registerParsable(outgoingParsables, CmdAPSDataRequest, new(EnqueueSendDataRequest))
+	registerParsable(outgoingParsables, new(EnqueueSendDataRequest))
+}
+
+func (r *EnqueueSendDataRequest) CommandID() CommandID {
+	return CmdAPSDataRequest
 }
 
 func (r *EnqueueSendDataRequest) ParsePayload(data []byte) error {
@@ -515,7 +567,11 @@ type EnqueueSendDataResponse struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdAPSDataRequest, new(EnqueueSendDataResponse))
+	registerParsable(incomingParsables, new(EnqueueSendDataResponse))
+}
+
+func (r *EnqueueSendDataResponse) CommandID() CommandID {
+	return CmdAPSDataRequest
 }
 
 func (r *EnqueueSendDataResponse) ParsePayload(data []byte) error {
@@ -539,7 +595,11 @@ func (r *EnqueueSendDataResponse) SerializePayload(buffer *bytes.Buffer) error {
 type QuerySendDataRequest struct{}
 
 func init() {
-	registerParsable(outgoingParsables, CmdAPSDataConfirm, new(QuerySendDataRequest))
+	registerParsable(outgoingParsables, new(QuerySendDataRequest))
+}
+
+func (r *QuerySendDataRequest) CommandID() CommandID {
+	return CmdAPSDataConfirm
 }
 
 func (r *QuerySendDataRequest) ParsePayload(data []byte) error {
@@ -562,7 +622,11 @@ type QuerySendDataResponse struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdAPSDataConfirm, new(QuerySendDataResponse))
+	registerParsable(incomingParsables, new(QuerySendDataResponse))
+}
+
+func (r *QuerySendDataResponse) CommandID() CommandID {
+	return CmdAPSDataConfirm
 }
 
 func (r *QuerySendDataResponse) ParsePayload(data []byte) error {
@@ -639,8 +703,12 @@ type UpdateNeighborCommand struct {
 }
 
 func init() {
-	registerParsable(incomingParsables, CmdUpdateNeighbor, new(UpdateNeighborCommand))
-	registerParsable(outgoingParsables, CmdUpdateNeighbor, new(UpdateNeighborCommand))
+	registerParsable(incomingParsables, new(UpdateNeighborCommand))
+	registerParsable(outgoingParsables, new(UpdateNeighborCommand))
+}
+
+func (c *UpdateNeighborCommand) CommandID() CommandID {
+	return CmdUpdateNeighbor
 }
 
 func (c *UpdateNeighborCommand) ParsePayload(data []byte) error {
