@@ -225,6 +225,6 @@ func (p NetParam) String() string {
 	case NetParamNWKFrameCounter:
 		return "NWKFrameCounter"
 	default:
-		return fmt.Sprintf("NetParam(%02x)", byte(p))
+		return fmt.Sprintf("NetParam(0x%02x)", byte(p))
 	}
 }
