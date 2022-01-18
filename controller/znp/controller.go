@@ -1,3 +1,7 @@
+// Implements a Controller for Texas Instrument's CC253X-based dongles.
+//
+// For documentation of the serial protocol, please refer to the following
+// documents: "ZNP Interface Specification", "Z-Stack Monitor and Test API".
 package znp
 
 import (

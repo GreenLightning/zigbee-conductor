@@ -1,3 +1,10 @@
+// Implements a Controller for the Phoscon ConBee II.
+//
+// The serial protocol is documented here:
+//
+// https://github.com/dresden-elektronik/deconz-serial-protocol
+//
+// https://deconz.dresden-elektronik.de/raspbian/deCONZ-Serial-Protocol-en_1.21.pdf
 package conbee
 
 import (

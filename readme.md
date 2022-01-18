@@ -19,3 +19,15 @@ A `Controller` handles most of the ZigBee stack including the Physical (PHY),
 MAC, Network (NWK) and Application Support (APS) layers. For higher-level
 support the `zcl` package provides functions to parse and serialize frames of
 the ZigBee Cluster Library, which sits above the APS layer.
+
+# Documentation
+
+Many of the constants and structs are transcribed from the specification.
+Please refer to the following documents for more information.
+
+- The Zigbee and Zigbee Cluster Library Specifications
+  (available for download from [here](https://zigbeealliance.org/solution/zigbee/)).
+- The book "Zigbee Wireless Networking" by Drew Gislason for a general overview
+  and explanation of Zigbee concepts.
+- Specifications for the serial protocols used by the dongles linked in the
+  package documentation of the controller packages.
