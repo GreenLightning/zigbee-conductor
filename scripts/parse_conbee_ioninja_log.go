@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/GreenLightning/zigbee-conductor/conbee"
+	"github.com/GreenLightning/zigbee-conductor/controller/conbee"
 	"github.com/GreenLightning/zigbee-conductor/pkg/slip"
 	"github.com/GreenLightning/zigbee-conductor/zcl"
 )
