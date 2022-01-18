@@ -48,6 +48,7 @@ func makeParsable(incoming bool, id CommandID) ParsableCommand {
 	return nil
 }
 
+// One frame of the Conbee serial protocol.
 type Frame struct {
 	CommandID      CommandID
 	SequenceNumber uint8

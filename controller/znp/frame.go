@@ -85,6 +85,7 @@ type FrameHeader struct {
 	ID        FrameID
 }
 
+// One frame of the Z-Stack serial protocol.
 type Frame struct {
 	FrameHeader
 	Data []byte
