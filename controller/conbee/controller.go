@@ -114,12 +114,12 @@ func (c *Controller) Send(msg zigbee.OutgoingMessage) error {
 		RequestID:           uint8(id),
 		Destination:         msg.Destination,
 		DestinationEndpoint: msg.DestinationEndpoint,
-		ProfileID:           0,
+		ProfileID:           0x0104, // @Todo: Hardcoded.
 		ClusterID:           msg.ClusterID,
 		SourceEndpoint:      msg.SourceEndpoint,
 		Payload:             msg.Data,
 		TxOptions:           0,
-		Radius:              0,
+		Radius:              msg.Radius,
 	})
 }
 
