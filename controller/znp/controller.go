@@ -35,13 +35,13 @@ func NewController(settings zigbee.ControllerSettings) (*Controller, error) {
 		OnParseError: func(err error, frame Frame) ErrorHandling {
 			if err == ErrCommandInvalidFrame {
 				if settings.LogErrors {
-					log.Println("[zigbee] invalid frame")
+					log.Println("[zigbee] invalid serial frame")
 				}
 				return ErrorHandlingContinue
 			}
 			if err == ErrCommandUnknownFrameHeader {
 				if settings.LogErrors {
-					log.Println("[zigbee] unknown frame:", frame)
+					log.Println("[zigbee] unknown serial frame:", frame)
 				}
 				return ErrorHandlingContinue
 			}

@@ -10,6 +10,7 @@ package conbee
 import (
 	"fmt"
 	"io"
+	"log"
 	"sync/atomic"
 	"time"
 
@@ -25,7 +26,6 @@ type Controller struct {
 	port            io.ReadWriteCloser
 }
 
-// @Todo: Add logging.
 func NewController(settings zigbee.ControllerSettings) (*Controller, error) {
 	options := serial.OpenOptions{
 		PortName:        settings.Port,
@@ -51,13 +51,17 @@ func NewController(settings zigbee.ControllerSettings) (*Controller, error) {
 }
 
 func (c *Controller) runWatchdogLoop() {
+	// @Todo: Do not leak this goroutine for 30 minutes.
 	for {
 		err := c.SendCommand(&WriteParameterRequest{
 			ParameterID: NetParamWatchdogTTL,
 			Parameter:   []byte{0x10, 0x0e, 0x00, 0x00}, // 3600 seconds = 1 hour
 		})
-		if err != nil {
+		if err == io.EOF {
 			return
+		}
+		if err != nil && c.settings.LogErrors {
+			log.Println("[zigbee] failed to send watchdog reset command:", err)
 		}
 		time.Sleep(30 * time.Minute)
 	}
@@ -77,11 +81,18 @@ func (c *Controller) Start() (chan zigbee.IncomingMessage, error) {
 				return
 			}
 			if err != nil {
+				if c.settings.LogErrors {
+					log.Println("[zigbee]", err)
+					log.Println("[zigbee] exiting")
+				}
 				return
 			}
 
 			frame, err := ParseFrame(data, true)
 			if err != nil {
+				if c.settings.LogErrors {
+					log.Println("[zigbee] failed to parse frame:", err)
+				}
 				continue
 			}
 

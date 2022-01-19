@@ -149,8 +149,8 @@ func buildFrameForCommand(command interface{}) Frame {
 }
 
 var (
-	ErrCommandUnknownFrameHeader = errors.New("unknown frame header")
-	ErrCommandInvalidFrame       = errors.New("invalid frame")
+	ErrCommandUnknownFrameHeader = errors.New("unknown serial frame header")
+	ErrCommandInvalidFrame       = errors.New("invalid serial frame")
 )
 
 func parseCommandFromFrame(frame Frame) (interface{}, error) {
