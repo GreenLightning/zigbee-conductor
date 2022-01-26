@@ -301,7 +301,7 @@ func init() {
 // Trust Center Device Indication.
 type ZdoTcDevInd struct {
 	SrcNwkAddr    uint16
-	WasBroadcast  uint64
+	SrcIEEEAddr   uint64
 	ParentNwkAddr uint16
 }
 
