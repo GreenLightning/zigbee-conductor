@@ -308,7 +308,7 @@ type ReadReceivedDataResponse struct {
 	DestinationEndpoint byte
 	Source              zigbee.Address
 	SourceEndpoint      byte
-	ProfileID           uint16
+	ProfileID           zigbee.ProfileID
 	ClusterID           uint16
 
 	// Payload is the APS frame payload.
@@ -358,7 +358,7 @@ func (r *ReadReceivedDataResponse) ParsePayload(data []byte) error {
 		return ErrInvalidPacket
 	}
 	r.SourceEndpoint = data[0]
-	r.ProfileID = binary.LittleEndian.Uint16(data[1:3])
+	r.ProfileID = zigbee.ProfileID(binary.LittleEndian.Uint16(data[1:3]))
 	r.ClusterID = binary.LittleEndian.Uint16(data[3:5])
 	payloadLength := int(binary.LittleEndian.Uint16(data[5:7]))
 	data = data[7:]
@@ -389,7 +389,7 @@ func (r *ReadReceivedDataResponse) SerializePayload(buffer *bytes.Buffer) error 
 	}
 	buffer.WriteByte(r.SourceEndpoint)
 
-	WriteUint16(buffer, r.ProfileID)
+	WriteUint16(buffer, uint16(r.ProfileID))
 	WriteUint16(buffer, r.ClusterID)
 
 	apsPayload := BeginPayload(buffer)
@@ -467,7 +467,7 @@ type EnqueueSendDataRequest struct {
 	Flags               byte
 	Destination         zigbee.Address
 	DestinationEndpoint byte
-	ProfileID           uint16
+	ProfileID           zigbee.ProfileID
 	ClusterID           uint16
 	SourceEndpoint      byte
 	Payload             []byte
@@ -516,7 +516,7 @@ func (r *EnqueueSendDataRequest) ParsePayload(data []byte) error {
 	if len(data) < 7 {
 		return ErrInvalidPacket
 	}
-	r.ProfileID = binary.LittleEndian.Uint16(data[0:2])
+	r.ProfileID = zigbee.ProfileID(binary.LittleEndian.Uint16(data[0:2]))
 	r.ClusterID = binary.LittleEndian.Uint16(data[2:4])
 	r.SourceEndpoint = data[4]
 	payloadLength := int(binary.LittleEndian.Uint16(data[5:7]))
@@ -546,7 +546,7 @@ func (r *EnqueueSendDataRequest) SerializePayload(buffer *bytes.Buffer) error {
 		buffer.WriteByte(r.DestinationEndpoint)
 	}
 
-	WriteUint16(buffer, r.ProfileID)
+	WriteUint16(buffer, uint16(r.ProfileID))
 	WriteUint16(buffer, r.ClusterID)
 	buffer.WriteByte(r.SourceEndpoint)
 

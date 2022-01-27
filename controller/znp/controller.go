@@ -71,17 +71,17 @@ func NewController(settings zigbee.ControllerSettings) (*Controller, error) {
 
 type Endpoint struct {
 	Endpoint  uint8
-	AppProfID uint16
+	AppProfID zigbee.ProfileID
 }
 
 var endpoints = []Endpoint{
-	Endpoint{1, 0x0104},
-	Endpoint{2, 0x0101},
-	Endpoint{3, 0x0105},
-	Endpoint{4, 0x0107},
-	Endpoint{5, 0x0108},
-	Endpoint{6, 0x0109},
-	Endpoint{8, 0x0104},
+	Endpoint{1, zigbee.ProfileHomeAutomation},
+	Endpoint{2, zigbee.ProfileIndustrialPlantMonitoring},
+	Endpoint{3, zigbee.ProfileCommercialBuildingAutomation},
+	Endpoint{4, zigbee.ProfileTelecomApplications},
+	Endpoint{5, zigbee.ProfilePersonalHomeAndHospitalCare},
+	Endpoint{6, zigbee.ProfileAdvancedMeteringInitialtive},
+	Endpoint{8, zigbee.ProfileHomeAutomation},
 }
 
 func (c *Controller) Start() (chan zigbee.IncomingMessage, error) {

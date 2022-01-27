@@ -1,6 +1,10 @@
 package znp
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/GreenLightning/zigbee-conductor/zigbee"
+)
 
 type DeviceState uint8
 
@@ -122,7 +126,7 @@ const (
 
 type AfRegisterRequest struct {
 	Endpoint       uint8
-	AppProfID      uint16
+	AppProfID      zigbee.ProfileID
 	AppDeviceID    uint16
 	AddDevVer      uint8
 	LatencyReq     uint8
