@@ -12,6 +12,8 @@ import (
 	"github.com/GreenLightning/zigbee-conductor/controller/conbee"
 	"github.com/GreenLightning/zigbee-conductor/pkg/slip"
 	"github.com/GreenLightning/zigbee-conductor/zcl"
+	"github.com/GreenLightning/zigbee-conductor/zdp"
+	"github.com/GreenLightning/zigbee-conductor/zigbee"
 )
 
 type Parser struct {
@@ -78,14 +80,30 @@ func (p *Parser) Flush() {
 		fmt.Printf("%s %s %+v\n", p.Timestamp, p.Dir, frame)
 		fmt.Printf("%s %s   %T%+v\n", spacer, p.Dir, frame.Command, frame.Command)
 
+		var profile zigbee.ProfileID
+		var cluster uint16
 		var payload []byte
 		if request, ok := frame.Command.(*conbee.EnqueueSendDataRequest); ok {
+			profile = request.ProfileID
+			cluster = request.ClusterID
 			payload = request.Payload
 		} else if response, ok := frame.Command.(*conbee.ReadReceivedDataResponse); ok {
+			profile = response.ProfileID
+			cluster = response.ClusterID
 			payload = response.Payload
 		}
 
-		if payload != nil {
+		if payload != nil && profile == zigbee.ProfileDevice {
+			tsn, cmd, err := zdp.ParseFrame(cluster, payload)
+			if err == zdp.ErrNotImplemented {
+				fmt.Printf("%s %s     TSN:%d ClusterID:0x%04x\n", spacer, p.Dir, tsn, cluster)
+				continue
+			} else if err != nil {
+				continue
+			}
+
+			fmt.Printf("%s %s     TSN:%d %T%+v\n", spacer, p.Dir, tsn, cmd, cmd)
+		} else if payload != nil && profile == zigbee.ProfileHomeAutomation {
 			frame, err := zcl.ParseFrame(payload)
 			if err != nil {
 				continue
