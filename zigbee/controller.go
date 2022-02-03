@@ -8,6 +8,16 @@ type ControllerSettings struct {
 	LogErrors   bool
 }
 
+// A controller allows interacting with the ZigBee network on the application level.
+//
+// The most important feature is sending and receiving messages (more
+// specifically these messages are based on the Application Support (APS) layer,
+// containing the APS payload and fields from the APS layer (e.g. cluster and
+// profile ID) and lower layers (e.g. addresses from the Network layer)).
+//
+// Endpoint management is still an open issue. You can expect endpoint 1 to be
+// present and configured using the Home Automation profile. If you require more
+// advanced endpoint management, please open an issue.
 type Controller interface {
 	io.Closer
 

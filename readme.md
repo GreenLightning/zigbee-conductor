@@ -31,3 +31,15 @@ Please refer to the following documents for more information.
   and explanation of Zigbee concepts.
 - Specifications for the serial protocols used by the dongles linked in the
   package documentation of the controller packages.
+
+# Project Status
+
+The code is robust, but incomplete. It has been running in my home automation
+setup for years, however my setup is relatively simple and ZigBee is only used
+to read sensor values and receive events from buttons. I am in the process of
+integrating the library into another project, where it will be responsible for
+commissioning and controlling devices as well.
+
+There might be breaking changes as I work on the API and integrate new features.
+Due to the size of the protocol, things are implemented on an as-needed basis.
+Feel free to open an issue or pull request if you need a specific command.
