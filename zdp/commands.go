@@ -101,6 +101,11 @@ type MatchDescRsp struct {
 	Matches           []uint8
 }
 
+type ParentAnnceRsp struct {
+	Status    Status
+	ChildInfo []zigbee.MACAddress
+}
+
 type EndDeviceBindRsp struct {
 	Status Status
 }
