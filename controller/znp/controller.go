@@ -53,8 +53,15 @@ func NewController(settings zigbee.ControllerSettings) (*Controller, error) {
 		callbacks.BeforeWrite = func(command interface{}) {
 			fmt.Printf("--> %T%+v\n", command, command)
 		}
-		callbacks.AfterRead = func(command interface{}) {
+	}
+	callbacks.AfterRead = func(command interface{}) {
+		if settings.LogCommands {
 			fmt.Printf("<-- %T%+v\n", command, command)
+		}
+		if settings.OnDeviceEvent != nil {
+			if event, ok := deviceEvent(command); ok {
+				settings.OnDeviceEvent(event)
+			}
 		}
 	}
 
@@ -209,4 +216,15 @@ func (c *Controller) WriteCommand(command interface{}) (interface{}, error) {
 
 func (c *Controller) WriteCommandTimeout(command interface{}, timeout time.Duration) (interface{}, error) {
 	return c.port.WriteCommandTimeout(command, timeout)
+}
+
+func deviceEvent(command interface{}) (zigbee.DeviceEvent, bool) {
+	switch event := command.(type) {
+	case ZdoEndDeviceAnnceInd:
+		return zigbee.DeviceEvent{Kind: zigbee.DeviceAnnounced, NetworkAddress: event.NwkAddr, IEEEAddress: zigbee.MACAddress(event.IEEEAddr), Capabilities: event.Capabilities}, true
+	case ZdoTcDevInd:
+		return zigbee.DeviceEvent{Kind: zigbee.DeviceJoined, NetworkAddress: event.SrcNwkAddr, IEEEAddress: zigbee.MACAddress(event.SrcIEEEAddr), ParentAddress: event.ParentNwkAddr}, true
+	default:
+		return zigbee.DeviceEvent{}, false
+	}
 }

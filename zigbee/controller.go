@@ -6,6 +6,9 @@ type ControllerSettings struct {
 	Port        string
 	LogCommands bool
 	LogErrors   bool
+	// OnDeviceEvent receives join/announcement events when supported by the controller
+	// (currently ZNP). Called on the reader goroutine: do not block or call controller methods.
+	OnDeviceEvent func(DeviceEvent)
 }
 
 // A controller allows interacting with the ZigBee network on the application level.
@@ -43,3 +46,19 @@ type OutgoingMessage struct {
 	Radius              uint8
 	Data                []byte
 }
+
+// DeviceEvent describes a trust-center join or a device announcement (which may be a rejoin).
+type DeviceEvent struct {
+	Kind           DeviceEventKind
+	NetworkAddress uint16
+	IEEEAddress    MACAddress
+	ParentAddress  uint16
+	Capabilities   byte
+}
+
+type DeviceEventKind string
+
+const (
+	DeviceJoined    DeviceEventKind = "joined"
+	DeviceAnnounced DeviceEventKind = "announced (join/rejoin)"
+)
