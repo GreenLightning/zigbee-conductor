@@ -293,7 +293,21 @@ func (typ DataType) SizeInBytes() int {
 	}
 }
 
+// TypedValue is one typed element of a ZCL structure.
+type TypedValue struct {
+	DataType DataType
+	Value    interface{}
+}
+
 func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
+	return parseValue(typ, data, 0)
+}
+
+func parseValue(typ DataType, data []byte, depth int) (interface{}, []byte, error) {
+	if depth > 32 {
+		return nil, data, fmt.Errorf("ZCL structure nesting exceeds 32 levels")
+	}
+
 	size := typ.SizeInBytes()
 	if size >= 0 && len(data) < size {
 		return nil, data, ErrNotEnoughData
@@ -511,7 +525,28 @@ func ParseValue(typ DataType, data []byte) (interface{}, []byte, error) {
 		value := string(data[2 : length+2])
 		return value, data[length+2:], nil
 
-	case DataTypeArray, DataTypeStructure:
+	case DataTypeStructure:
+		if len(data) < 2 {
+			return nil, data, ErrNotEnoughData
+		}
+		count := int(binary.LittleEndian.Uint16(data))
+		data = data[2:]
+		values := make([]TypedValue, 0)
+		for i := 0; i < count; i++ {
+			if len(data) == 0 {
+				return nil, data, ErrNotEnoughData
+			}
+			elementType := DataType(data[0])
+			value, rest, err := parseValue(elementType, data[1:], depth+1)
+			if err != nil {
+				return nil, data, err
+			}
+			values = append(values, TypedValue{DataType: elementType, Value: value})
+			data = rest
+		}
+		return values, data, nil
+
+	case DataTypeArray:
 		return nil, data, fmt.Errorf("%w: %v", ErrNotImplemented, typ)
 
 	case DataTypeSet, DataTypeBag:
